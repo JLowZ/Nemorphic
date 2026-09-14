@@ -172,7 +172,7 @@ async function main() {
   for (const [needle, label] of [
     ["Todos los eventos", "título de la agenda"],
     ["UMBRA", "evento en la agenda"],
-    ["Sembrando Consciencia", "segundo evento en la agenda"],
+    ["Sembrando Conciencia", "segundo evento en la agenda"],
   ]) {
     if (agenda.status !== 200 || !agendaHtml.includes(needle)) {
       failures.push(`GET /eventos no trae ${label} (status ${agenda.status})`);

@@ -732,12 +732,13 @@ h6,
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
 }
 
+/* El flyer se muestra entero y con su proporción: cada evento trae el suyo (UMBRA
+   es cuadrado, Sembrando Conciencia vertical) y recortarlo cortaría justo la
+   franja de fecha y precio, que suele ir abajo. El marco crece con la imagen. */
 .nm-event-poster {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 1;
-  object-fit: cover;
 }
 
 .nm-event-info {
@@ -1786,6 +1787,8 @@ select.nm-input option {
    degradado de la marca, con la misma proporción que la imagen real para que la
    tarjeta no cambie de tamaño cuando llegue el flyer de verdad. */
 .nm-event-poster--sin-flyer {
+  /* Sin imagen no hay proporción que respetar: cuadrado, como el formato más común. */
+  aspect-ratio: 1;
   display: grid;
   place-content: center;
   gap: 0.75rem;

@@ -63,6 +63,13 @@ const MIGRACIONES = [
     descripcion: "varios eventos a la vez: cuál se destaca en la landing",
     comprobaciones: [{ tabla: "events", columnas: "featured" }],
   },
+  {
+    archivo: "0006_sembrando_conciencia.sql",
+    descripcion: "datos definitivos de Sembrando Conciencia (nombre, fecha y flyer)",
+    // Solo cambia datos: no hay columna nueva que buscar, así que se comprueba que
+    // exista la fila con el slug corregido.
+    comprobaciones: [{ tabla: "events", columnas: "slug", fila: ["slug", "sembrando-conciencia"] }],
+  },
 ];
 
 let pendientes = 0;
@@ -70,9 +77,13 @@ let pendientes = 0;
 for (const migracion of MIGRACIONES) {
   const fallos = [];
 
-  for (const { tabla, columnas } of migracion.comprobaciones) {
-    const { error } = await supabase.from(tabla).select(columnas).limit(1);
+  for (const { tabla, columnas, fila } of migracion.comprobaciones) {
+    let consulta = supabase.from(tabla).select(columnas);
+    if (fila) consulta = consulta.eq(fila[0], fila[1]);
+    const { data, error } = await consulta.limit(1);
     if (error) fallos.push(`${tabla} (${error.message})`);
+    else if (fila && (data ?? []).length === 0)
+      fallos.push(`${tabla}: no hay fila con ${fila[0]} = ${fila[1]}`);
   }
 
   if (fallos.length === 0) {
