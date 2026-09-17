@@ -159,7 +159,11 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   manda por lotes desde `/admin/boletin`, por el SMTP de Gmail con App Password
   (ver skill `email`), con baja por token en `/baja`.
 - **Panel de admin**: `/admin` con login por clave compartida, sesión sellada
-  (`nm_admin`, HttpOnly + Secure + SameSite=Lax, 8 h) y límite de intentos por IP.
+  (`nm_admin`, HttpOnly + Secure + SameSite=Lax, 8 h) y límite de intentos **por
+  dispositivo** (cookie `nm_cid`), con un tope por IP más alto como red de seguridad.
+  Un navegador que ya entró bien lleva un sello firmado (`nm_trust_*`) y queda fuera
+  del tope por IP: así, si alguien ataca desde tu misma red, el bloqueo le cae a esa
+  persona y no al equipo del sello.
   Secciones: Resumen (acceso de puerta y **qué evento sale en la portada**),
   Reservas, Suscriptores y Boletín; las dos de datos con alta, edición y borrado,
   para que el equipo no técnico gestione datos sin entrar a Supabase. Sin `SESSION_SECRET` ni

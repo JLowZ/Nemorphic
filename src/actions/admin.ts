@@ -27,7 +27,7 @@ export const login = createServerFn({ method: "POST" })
       return { ok: false, message: "El panel aún no está configurado. Avisa al desarrollador." };
     }
 
-    const blockedSeconds = auth.getLoginBlockSeconds();
+    const blockedSeconds = await auth.getLoginBlockSeconds();
     if (blockedSeconds > 0) {
       const minutes = Math.ceil(blockedSeconds / 60);
       return {
@@ -47,12 +47,15 @@ export const login = createServerFn({ method: "POST" })
     }
 
     if (!valid) {
-      auth.registerFailedLogin();
+      await auth.registerFailedLogin();
       await wait(FAILURE_DELAY_MS);
       return { ok: false, message: "Clave incorrecta." };
     }
 
-    auth.clearFailedLogins();
+    await auth.clearFailedLogins();
+    // Este navegador pasa a ser conocido: a partir de ahora el bloqueo por IP de
+    // un atacante de la misma red ya no lo alcanza.
+    await auth.trustCurrentDevice("admin");
     await auth.startAdminSession();
     return { ok: true };
   });

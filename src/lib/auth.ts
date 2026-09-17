@@ -5,7 +5,13 @@ import { env } from "node:process";
 // `useSession` no es un hook de React, es el helper de sesión de TanStack Start.
 // Se importa con alias para que `react-hooks/rules-of-hooks` no lo confunda con un
 // hook al llamarlo desde funciones normales del servidor.
-import { getRequestIP, useSession as openSession } from "@tanstack/react-start/server";
+import {
+  getCookie,
+  getRequest,
+  getRequestIP,
+  setCookie,
+  useSession as openSession,
+} from "@tanstack/react-start/server";
 
 /**
  * Hay dos accesos distintos, con cookies distintas a propósito:
@@ -251,6 +257,24 @@ export async function doorPasswordIsSet(): Promise<boolean> {
 
 // --- Límite de intentos -----------------------------------------------------
 //
+// Antes se contaba SOLO por IP, y eso tenía un agujero práctico grave: dos
+// equipos detrás del mismo router salen a internet con la misma IP pública. Si
+// alguien probaba claves desde un PC de la casa (o del mismo bar, o de la misma
+// red móvil), el bloqueo caía también sobre el equipo del sello — justo en el
+// momento en que hace falta entrar al panel.
+//
+// Ahora se cuentan dos cosas por separado:
+//
+//  1. Por DISPOSITIVO (cookie `nm_cid`): es el contador que de verdad frena a
+//     quien está probando claves, porque lo normal es que no borre la cookie.
+//  2. Por IP: red de seguridad para quien sí la borra en cada intento. Es más
+//     laxo y solo se aplica a dispositivos desconocidos.
+//
+// Y un dispositivo que YA entró bien alguna vez lleva un sello firmado con
+// SESSION_SECRET (`nm_trust_*`, no falsificable): ese queda fuera del contador
+// por IP y tiene su propio margen, amplio y con bloqueo corto. Resultado: el
+// ataque de alguien de tu misma red le cae encima a esa persona, no a ti.
+//
 // En serverless cada instancia tiene su propio mapa y se reinicia sola, así que
 // esto no es una barrera perfecta. Sí frena el caso real que importa: alguien
 // probando claves en bucle contra una instancia caliente.
@@ -260,13 +284,108 @@ type Intento = { count: number; firstAt: number; blockedUntil: number };
 const intentos = new Map<string, Intento>();
 
 const VENTANA_MS = 15 * 60 * 1000;
-const MAX_INTENTOS = 8;
-const BLOQUEO_MS = 15 * 60 * 1000;
 
-function claveCliente(ambito: Rol): string {
+/** Dispositivo desconocido: pocos intentos y bloqueo largo. */
+const MAX_DISPOSITIVO = 8;
+const BLOQUEO_DISPOSITIVO_MS = 15 * 60 * 1000;
+
+/**
+ * Dispositivo que ya entró antes: margen amplio y bloqueo corto. Sigue habiendo
+ * freno (por si te roban el portátil ya usado), pero no te deja fuera media hora
+ * por teclear mal la clave la noche de un evento.
+ */
+const MAX_CONFIABLE = 25;
+const BLOQUEO_CONFIABLE_MS = 2 * 60 * 1000;
+
+/** Red de seguridad por IP, solo para dispositivos desconocidos. */
+const MAX_IP = 40;
+const BLOQUEO_IP_MS = 15 * 60 * 1000;
+
+/** Identificador de navegador. No es un secreto: solo separa contadores. */
+const COOKIE_DISPOSITIVO = "nm_cid";
+const UN_ANO_SEGUNDOS = 60 * 60 * 24 * 365;
+
+/** Cuánto vale el sello de "este navegador ya entró bien". */
+const CONFIANZA_SEGUNDOS = 60 * 60 * 24 * 60;
+
+// Una misma petición puede preguntar el bloqueo y luego anotar el fallo. Sin
+// esta caché se generarían dos ids y se mandarían dos cookies distintas.
+const dispositivoPorPeticion = new WeakMap<Request, string>();
+
+function idDispositivo(): string {
+  const peticion = getRequest();
+  const cacheado = dispositivoPorPeticion.get(peticion);
+  if (cacheado) return cacheado;
+
+  let id = getCookie(COOKIE_DISPOSITIVO);
+  if (!id || !/^[0-9a-f]{32}$/.test(id)) {
+    id = randomBytes(16).toString("hex");
+    setCookie(COOKIE_DISPOSITIVO, id, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: UN_ANO_SEGUNDOS,
+    });
+  }
+
+  dispositivoPorPeticion.set(peticion, id);
+  return id;
+}
+
+/** Cookie sellada aparte de la sesión: sobrevive al cierre de sesión y al caducar. */
+function configConfianza(rol: Rol) {
+  const password = env["SESSION_SECRET"];
+  if (!password || password.length < MIN_SECRET_LENGTH) return null;
+
+  return {
+    password,
+    name: `nm_trust_${rol}`,
+    maxAge: CONFIANZA_SEGUNDOS,
+    cookie: { httpOnly: true, sameSite: "lax", path: "/", secure: true },
+  } as const;
+}
+
+type Sello = { rol?: Rol; huella?: string };
+
+async function esDispositivoDeConfianza(rol: Rol): Promise<boolean> {
+  const config = configConfianza(rol);
+  if (!config) return false;
+
+  const sello = await openSession<Sello>(config);
+  if (sello.data.rol !== rol) return false;
+  if (rol === "admin") return true;
+
+  // La clave de puerta rota en cada evento. Sin esto, el portátil de quien
+  // atendió un evento pasado conservaría el margen amplio y la exención del tope
+  // por IP contra la clave NUEVA, que es justo el fraude que se quiere evitar.
+  // Atado a la huella, cambiar la clave le devuelve el trato de desconocido.
+  const vigente = await huellaClavePuerta();
+  return vigente !== null && sello.data.huella === vigente;
+}
+
+/**
+ * Marca este navegador como conocido. Se llama solo tras validar la clave, así
+ * que la única forma de conseguir el sello es saberla.
+ */
+export async function trustCurrentDevice(rol: Rol = "admin"): Promise<void> {
+  const config = configConfianza(rol);
+  if (!config) return;
+
+  const sello = await openSession<Sello>(config);
+  const huella = rol === "door" ? await huellaClavePuerta() : undefined;
+
+  await sello.update({ rol, ...(huella ? { huella } : {}) });
+}
+
+function claveDispositivo(ambito: Rol): string {
+  return `${ambito}:d:${idDispositivo()}`;
+}
+
+function claveIp(ambito: Rol): string {
   // Vercel siempre pone x-forwarded-for, y el cliente no puede falsificarlo
   // porque el proxy lo reescribe.
-  return `${ambito}:${getRequestIP({ xForwardedFor: true }) ?? "desconocido"}`;
+  return `${ambito}:i:${getRequestIP({ xForwardedFor: true }) ?? "desconocido"}`;
 }
 
 function limpiar(ahora: number): void {
@@ -277,20 +396,14 @@ function limpiar(ahora: number): void {
   }
 }
 
-/** Segundos que faltan para poder reintentar, o 0 si se puede intentar ya. */
-export function getLoginBlockSeconds(ambito: Rol = "admin"): number {
-  const ahora = Date.now();
-  limpiar(ahora);
-
-  const intento = intentos.get(claveCliente(ambito));
+function segundosDeBloqueo(clave: string, ahora: number): number {
+  const intento = intentos.get(clave);
   if (!intento || ahora >= intento.blockedUntil) return 0;
 
   return Math.ceil((intento.blockedUntil - ahora) / 1000);
 }
 
-export function registerFailedLogin(ambito: Rol = "admin"): void {
-  const ahora = Date.now();
-  const clave = claveCliente(ambito);
+function anotarFallo(clave: string, ahora: number, max: number, bloqueoMs: number): void {
   const intento = intentos.get(clave);
 
   if (!intento || ahora - intento.firstAt > VENTANA_MS) {
@@ -299,13 +412,42 @@ export function registerFailedLogin(ambito: Rol = "admin"): void {
   }
 
   intento.count += 1;
-  if (intento.count >= MAX_INTENTOS) {
-    intento.blockedUntil = ahora + BLOQUEO_MS;
+  if (intento.count >= max) {
+    intento.blockedUntil = ahora + bloqueoMs;
     intento.count = 0;
     intento.firstAt = ahora;
   }
 }
 
-export function clearFailedLogins(ambito: Rol = "admin"): void {
-  intentos.delete(claveCliente(ambito));
+/** Segundos que faltan para poder reintentar, o 0 si se puede intentar ya. */
+export async function getLoginBlockSeconds(ambito: Rol = "admin"): Promise<number> {
+  const ahora = Date.now();
+  limpiar(ahora);
+
+  const propio = segundosDeBloqueo(claveDispositivo(ambito), ahora);
+
+  // Un dispositivo conocido responde solo por lo suyo: lo que haga otra máquina
+  // de la misma red no lo toca.
+  if (await esDispositivoDeConfianza(ambito)) return propio;
+
+  return Math.max(propio, segundosDeBloqueo(claveIp(ambito), ahora));
+}
+
+export async function registerFailedLogin(ambito: Rol = "admin"): Promise<void> {
+  const ahora = Date.now();
+  const confiable = await esDispositivoDeConfianza(ambito);
+
+  anotarFallo(
+    claveDispositivo(ambito),
+    ahora,
+    confiable ? MAX_CONFIABLE : MAX_DISPOSITIVO,
+    confiable ? BLOQUEO_CONFIABLE_MS : BLOQUEO_DISPOSITIVO_MS,
+  );
+
+  if (!confiable) anotarFallo(claveIp(ambito), ahora, MAX_IP, BLOQUEO_IP_MS);
+}
+
+export async function clearFailedLogins(ambito: Rol = "admin"): Promise<void> {
+  intentos.delete(claveDispositivo(ambito));
+  intentos.delete(claveIp(ambito));
 }

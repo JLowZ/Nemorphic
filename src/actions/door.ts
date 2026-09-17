@@ -37,7 +37,7 @@ export const doorLogin = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: true } | { ok: false; message: string }> => {
     const auth = await import("@/lib/auth");
 
-    const bloqueado = auth.getLoginBlockSeconds("door");
+    const bloqueado = await auth.getLoginBlockSeconds("door");
     if (bloqueado > 0) {
       const minutos = Math.ceil(bloqueado / 60);
       return {
@@ -54,12 +54,13 @@ export const doorLogin = createServerFn({ method: "POST" })
     }
 
     if (!(await auth.verifyDoorPassword(data.password))) {
-      auth.registerFailedLogin("door");
+      await auth.registerFailedLogin("door");
       await esperar(FAILURE_DELAY_MS);
       return { ok: false, message: "Clave incorrecta." };
     }
 
-    auth.clearFailedLogins("door");
+    await auth.clearFailedLogins("door");
+    await auth.trustCurrentDevice("door");
     await auth.startSession("door");
     return { ok: true };
   });
