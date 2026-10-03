@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BajaRouteImport } from './routes/baja'
 import { Route as EventosRouteImport } from './routes/eventos'
+import { Route as ZzPanelChecksRouteImport } from './routes/zz-panel-checks'
 import { Route as AdminPanelRouteImport } from './routes/admin/_panel'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as PuertaListaRouteImport } from './routes/puerta/_lista'
@@ -35,6 +36,11 @@ const BajaRoute = BajaRouteImport.update({
 const EventosRoute = EventosRouteImport.update({
   id: '/eventos',
   path: '/eventos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ZzPanelChecksRoute = ZzPanelChecksRouteImport.update({
+  id: '/zz-panel-checks',
+  path: '/zz-panel-checks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPanelRoute = AdminPanelRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/baja': typeof BajaRoute
   '/eventos': typeof EventosRoute
+  '/zz-panel-checks': typeof ZzPanelChecksRoute
   '/admin': typeof AdminPanelRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/puerta': typeof PuertaListaRouteWithChildren
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/baja': typeof BajaRoute
   '/eventos': typeof EventosRoute
+  '/zz-panel-checks': typeof ZzPanelChecksRoute
   '/admin/login': typeof AdminLoginRoute
   '/puerta/login': typeof PuertaLoginRoute
   '/admin/boletin': typeof AdminPanelBoletinRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/baja': typeof BajaRoute
   '/eventos': typeof EventosRoute
+  '/zz-panel-checks': typeof ZzPanelChecksRoute
   '/admin/_panel': typeof AdminPanelRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/puerta/_lista': typeof PuertaListaRouteWithChildren
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/baja'
     | '/eventos'
+    | '/zz-panel-checks'
     | '/admin'
     | '/admin/login'
     | '/puerta'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/'
     | '/baja'
     | '/eventos'
+    | '/zz-panel-checks'
     | '/admin/login'
     | '/puerta/login'
     | '/admin/boletin'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/baja'
     | '/eventos'
+    | '/zz-panel-checks'
     | '/admin/_panel'
     | '/admin/login'
     | '/puerta/_lista'
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BajaRoute: typeof BajaRoute
   EventosRoute: typeof EventosRoute
+  ZzPanelChecksRoute: typeof ZzPanelChecksRoute
   AdminPanelRoute: typeof AdminPanelRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
   PuertaListaRoute: typeof PuertaListaRouteWithChildren
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       path: '/eventos'
       fullPath: '/eventos'
       preLoaderRoute: typeof EventosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/zz-panel-checks': {
+      id: '/zz-panel-checks'
+      path: '/zz-panel-checks'
+      fullPath: '/zz-panel-checks'
+      preLoaderRoute: typeof ZzPanelChecksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/_panel': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BajaRoute: BajaRoute,
   EventosRoute: EventosRoute,
+  ZzPanelChecksRoute: ZzPanelChecksRoute,
   AdminPanelRoute: AdminPanelRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
   PuertaListaRoute: PuertaListaRouteWithChildren,
