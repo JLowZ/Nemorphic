@@ -70,6 +70,11 @@ const MIGRACIONES = [
     // exista la fila con el slug corregido.
     comprobaciones: [{ tabla: "events", columnas: "slug", fila: ["slug", "sembrando-conciencia"] }],
   },
+  {
+    archivo: "0007_cierre_de_reservas.sql",
+    descripcion: "hora de cierre automático de las reservas de cada evento",
+    comprobaciones: [{ tabla: "events", columnas: "reservations_close_at" }],
+  },
 ];
 
 let pendientes = 0;

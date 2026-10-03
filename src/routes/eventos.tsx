@@ -54,7 +54,7 @@ function Eventos() {
   }, []);
 
   // Un slug inventado en la URL no debe abrir un formulario vacío.
-  const enReserva = eventos.find((evento) => evento.slug === reservar);
+  const enReserva = eventos.find((evento) => evento.slug === reservar && !evento.reservasCerradas);
 
   const abrirReserva = (slug: string) => navigate({ search: { reservar: slug } });
   const cerrarReserva = () => navigate({ search: {} });
@@ -130,13 +130,19 @@ function TarjetaEvento({
         {evento.tagline && <p className="nm-event-tagline">{evento.tagline}</p>}
         {lugar && <p className="nm-agenda-lugar">{lugar}</p>}
 
-        <button
-          type="button"
-          className="nm-btn nm-btn--solid nm-event-cta"
-          onClick={() => onReservar(evento.slug)}
-        >
-          Reservar mi cupo
-        </button>
+        {evento.reservasCerradas ? (
+          <p className="nm-body-text nm-event-cta">
+            Las reservas ya cerraron. Los cupos se pagan en la puerta.
+          </p>
+        ) : (
+          <button
+            type="button"
+            className="nm-btn nm-btn--solid nm-event-cta"
+            onClick={() => onReservar(evento.slug)}
+          >
+            Reservar mi cupo
+          </button>
+        )}
       </div>
     </article>
   );

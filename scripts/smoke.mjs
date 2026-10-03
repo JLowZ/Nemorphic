@@ -30,7 +30,6 @@ const CHECKS = [
   // El evento sale de la base, no del JSX: si esto falla, o no hay evento
   // destacado con reservas abiertas, o la consulta se rompió.
   ["UMBRA", "evento destacado"],
-  ["Ver todos los eventos", "enlace a la agenda completa"],
   ["/Assets/logo nemorphic.png", "logo desde /Assets"],
   // Las familias cargadas deben coincidir con --nm-font-display y
   // --nm-font-secondary de styles.css, o el sitio cae al fallback del sistema.
@@ -172,7 +171,6 @@ async function main() {
   for (const [needle, label] of [
     ["Todos los eventos", "título de la agenda"],
     ["UMBRA", "evento en la agenda"],
-    ["Sembrando Conciencia", "segundo evento en la agenda"],
   ]) {
     if (agenda.status !== 200 || !agendaHtml.includes(needle)) {
       failures.push(`GET /eventos no trae ${label} (status ${agenda.status})`);

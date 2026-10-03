@@ -18,6 +18,11 @@ export type EventoPublico = {
   posterUrl: string | null;
   /** El que la landing muestra en #eventos. Solo uno lo tiene. */
   featured: boolean;
+  /**
+   * Ya pasó la hora de cierre de reservas. El evento sigue en la agenda, pero sin
+   * botón de reservar. Se calcula al cargar; el servidor lo vuelve a comprobar.
+   */
+  reservasCerradas: boolean;
 };
 
 /**
@@ -35,7 +40,9 @@ export const getOpenEvents = createServerFn({ method: "GET" }).handler(
 
     const { data, error } = await getSupabaseAdmin()
       .from("events")
-      .select("slug, name, tagline, starts_at, ends_at, venue, address, poster_url, featured")
+      .select(
+        "slug, name, tagline, starts_at, ends_at, venue, address, poster_url, featured, reservations_close_at",
+      )
       .eq("reservations_open", true)
       .gte("starts_at", new Date().toISOString())
       .order("starts_at", { ascending: true });
@@ -44,6 +51,8 @@ export const getOpenEvents = createServerFn({ method: "GET" }).handler(
       console.error("getOpenEvents:", error);
       return [];
     }
+
+    const ahora = Date.now();
 
     return (data ?? []).map((fila) => ({
       slug: fila.slug,
@@ -55,6 +64,8 @@ export const getOpenEvents = createServerFn({ method: "GET" }).handler(
       address: fila.address,
       posterUrl: fila.poster_url,
       featured: fila.featured ?? false,
+      reservasCerradas:
+        fila.reservations_close_at !== null && Date.parse(fila.reservations_close_at) <= ahora,
     }));
   },
 );

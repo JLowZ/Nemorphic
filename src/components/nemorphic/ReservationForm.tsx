@@ -36,6 +36,8 @@ export function ReservationForm({
     queryKey: ["eventos-abiertos"],
     queryFn: () => getOpenEvents(),
     staleTime: 5 * 60 * 1000,
+    // Los que ya cerraron siguen en la agenda, pero no se pueden elegir aquí.
+    select: (lista) => lista.filter((evento) => !evento.reservasCerradas),
   });
 
   const form = useForm<ReservationInput>({

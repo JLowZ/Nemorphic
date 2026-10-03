@@ -30,7 +30,9 @@ export const createReservation = createServerFn({ method: "POST" })
 
     const { data: evento, error: eventoError } = await supabase
       .from("events")
-      .select("id, name, tagline, starts_at, venue, capacity, reservations_open")
+      .select(
+        "id, name, tagline, starts_at, venue, capacity, reservations_open, reservations_close_at",
+      )
       .eq("slug", data.eventSlug)
       .maybeSingle();
 
@@ -41,7 +43,8 @@ export const createReservation = createServerFn({ method: "POST" })
     if (!evento) {
       return { ok: false, message: "Ese evento ya no está disponible." };
     }
-    if (!evento.reservations_open) {
+    const cierre = evento.reservations_close_at;
+    if (!evento.reservations_open || (cierre !== null && Date.parse(cierre) <= Date.now())) {
       return { ok: false, message: "Las reservas para este evento están cerradas." };
     }
 

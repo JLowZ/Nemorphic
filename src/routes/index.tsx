@@ -407,16 +407,22 @@ function Index() {
                     )}
                   </dl>
 
-                  <button
-                    type="button"
-                    className="nm-btn nm-btn--solid nm-event-cta"
-                    onClick={() => {
-                      setReservaSlug(destacado.slug);
-                      setModal("reservar");
-                    }}
-                  >
-                    Reservar mi cupo
-                  </button>
+                  {destacado.reservasCerradas ? (
+                    <p className="nm-body-text nm-event-cta">
+                      Las reservas ya cerraron. Los cupos se pagan en la puerta.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      className="nm-btn nm-btn--solid nm-event-cta"
+                      onClick={() => {
+                        setReservaSlug(destacado.slug);
+                        setModal("reservar");
+                      }}
+                    >
+                      Reservar mi cupo
+                    </button>
+                  )}
                 </div>
               </article>
             ) : (
