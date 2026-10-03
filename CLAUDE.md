@@ -154,6 +154,24 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   también necesita su código), y el aviso del panel dice si salió. El envío está en
   `src/lib/email/reserva.ts`, compartido por las dos vías. Gestión completa en
   `/admin/reservas`.
+- **Cierre automático de reservas**: cada evento tiene `reservations_close_at`
+  (migración 0007, `NULL` = sin hora de cierre). Pasada esa hora el servidor rechaza
+  reservas nuevas (`createReservation` lo comprueba, no solo la interfaz) y el evento
+  sigue en la landing y en `/eventos` con «Las reservas ya cerraron. Los cupos se
+  pagan en la puerta.» en vez del botón; el formulario tampoco deja elegirlo. Existe
+  porque la reserva da el precio de preventa (15K) y en la puerta se cobra más (20K).
+  `reservations_open` sigue siendo el interruptor manual, pero **esconde el evento de
+  la landing**; el reloj no. Se fija a mano en el SQL Editor, con el desfase de
+  Colombia (`-05`):
+
+  ```sql
+  update public.events set reservations_close_at = '2026-10-03 17:00:00-05'
+  where slug = 'umbra' returning slug, reservations_close_at;
+  ```
+
+  Verifica con el `returning` que tocó una fila: un slug mal escrito no da error,
+  solo no cambia nada. Las reservas ya hechas no se tocan.
+
 - **Newsletter**: el formulario guarda **nombre y correo** en Supabase, con campo
   trampa contra bots. Gestión en `/admin/suscriptores`. El **envío** se redacta y se
   manda por lotes desde `/admin/boletin`, por el SMTP de Gmail con App Password
@@ -199,11 +217,20 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
 
 ### Migraciones
 
-Se aplican **a mano** desde el SQL Editor de Supabase: la clave de servicio habla
+Van de la 0001 a la 0007 y todas están aplicadas. Se aplican **a mano** desde el SQL
+Editor de Supabase: la clave de servicio habla
 por PostgREST, que no permite crear ni alterar tablas. Comprueba el estado con
 `npm run db:status`, que dice qué archivo de `supabase/migrations/` falta por pegar.
 
-## Próximo trabajo — decisiones ya tomadas
+## Próximo trabajo
+
+**Siguiente cambio: la sección de trayectoria** (historia y recorrido del sello en
+la landing). Aún sin diseño ni contenido: antes de escribir código, preguntar qué
+hitos va (eventos, lanzamientos, fechas, fotos) y dónde va dentro de `index.tsx`. Es
+contenido más que datos: seguir la skill `content` y, para el JSX/CSS, `ui` (clases
+`nm-*`). Al añadirla, sumar su comprobación al array `CHECKS` de `scripts/smoke.mjs`.
+
+### Decisiones ya tomadas (newsletter, reservas y panel — ya implementadas)
 
 1. **Newsletter funcional**: guardar suscriptores en Supabase y enviarles correo.
    El envío es **manual desde el panel de admin**, con asunto y cuerpo libres, para
@@ -224,6 +251,20 @@ por PostgREST, que no permite crear ni alterar tablas. Comprueba el estado con
 | Correo            | **SMTP de Gmail** con App Password de `nemorphictechno@gmail.com`: sin dominio propio es lo que mejor llega, porque lo firma Google. Migrar a Resend al comprar dominio es cambiar un archivo |
 
 ## Despliegue
+
+**Orden al añadir una columna**: aplica la migración en Supabase **antes** de subir
+el código que la lee. Si el código sale primero, la consulta pide una columna que no
+existe y la agenda y las reservas se caen. `db:status` falla hasta que la migración
+esté pegada; añade la nueva entrada a `scripts/db-status.mjs`.
+
+**Dependencias de TanStack**: Vercel **bloquea el build** si detecta una versión
+vulnerable de `@tanstack/react-start` (pasó con la 1.168.32; hoy 1.168.60). Al subir
+`react-start`, sube también `@tanstack/react-router` y `@tanstack/router-plugin` a las
+versiones que pide, o quedan dos copias de `router-core` y el build falla con
+`MISSING_EXPORT`. Comprueba con `npm ls @tanstack/router-core`: debe haber una sola.
+Nunca se usa `DANGEROUSLY_DEPLOY_VULNERABLE_TANSTACK_START_XSS=1`. `npm audit` está en
+0; Vercel instala con `package-lock.json` (`bun.lock` está desactualizado y bun no
+está instalado).
 
 La página está en **Vercel**: `https://nemorphic.vercel.app`.
 
