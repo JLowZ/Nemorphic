@@ -1949,3 +1949,120 @@ select.nm-input option {
   font-size: 0.85rem;
   color: rgb(255 255 255 / 60%);
 }
+
+/* TRAYECTORIA -------------------------------------------- */
+.nm-tray-lista {
+  display: grid;
+  gap: clamp(3rem, 7vw, 5.5rem);
+}
+
+/* Flyer a la izquierda, carrusel a la derecha. `minmax(0, 1fr)` deja que la
+   columna del carrusel se encoja: sin el 0, el contenido mide más que la columna
+   y el carrusel desborda la página en vez de recortarse. */
+.nm-tray-item {
+  display: grid;
+  grid-template-columns: minmax(200px, 300px) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  padding-bottom: clamp(3rem, 7vw, 5.5rem);
+  border-bottom: 1px solid rgb(210 156 204 / 14%);
+}
+
+.nm-tray-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.nm-tray-titulo {
+  margin-top: 1.25rem;
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+  line-height: 1.05;
+  color: var(--nm-pink);
+}
+
+.nm-tray-fecha {
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--nm-pink-strong);
+}
+
+/* El carrusel se centra en vertical respecto al flyer, que es más alto. */
+.nm-tray-carrusel {
+  align-self: center;
+  min-width: 0;
+}
+
+/* Móvil: una pieza por vista. Escritorio: dos, y tres cuando hay ancho de sobra. */
+.nm-tray-slide {
+  flex-basis: 100%;
+}
+
+.nm-tray-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  background: var(--nm-ink);
+  border: 1px solid rgb(210 156 204 / 20%);
+}
+
+/* Las fotos se ven ENTERAS, con su proporción: la de todo el line-up es horizontal y
+   recortada a 4:5 dejaría fuera a la mitad de los artistas. Los vídeos, casi todos
+   verticales, sí se recortan a 4:5 para que la fila se vea pareja. */
+.nm-tray-media--foto {
+  aspect-ratio: auto;
+  height: auto;
+}
+
+.nm-tray-figura {
+  margin: 0;
+}
+
+/* Pie de foto: quién sale. Mismo tratamiento que la fecha, para que se lea como
+   parte del mismo sistema y no como un texto suelto. */
+.nm-tray-pie {
+  margin-top: 0.65rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--nm-pink-strong);
+}
+
+.nm-tray-flecha {
+  border-color: var(--nm-pink-strong);
+  background: rgb(5 3 8 / 72%);
+  color: var(--nm-pink);
+}
+
+.nm-tray-flecha:hover:not(:disabled) {
+  background: var(--nm-violet);
+  color: var(--nm-white);
+}
+
+@media (min-width: 768px) {
+  .nm-tray-slide {
+    flex-basis: 50%;
+  }
+}
+
+@media (min-width: 1280px) {
+  .nm-tray-slide {
+    flex-basis: 33.3333%;
+  }
+}
+
+@media (max-width: 767px) {
+  .nm-tray-item {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .nm-tray-flyer {
+    max-width: 300px;
+    margin-inline: auto;
+  }
+}

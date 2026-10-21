@@ -2,9 +2,11 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { eventoDestacado, getOpenEvents } from "../actions/events";
+import { getTrayectoria } from "../actions/trayectoria";
 import { Modal } from "../components/nemorphic/Modal";
 import { PosterEvento } from "../components/nemorphic/PosterEvento";
 import { ReservationForm } from "../components/nemorphic/ReservationForm";
+import { TrayectoriaItem } from "../components/nemorphic/TrayectoriaItem";
 import { NewsletterForm } from "../components/nemorphic/NewsletterForm";
 import {
   ChevronIcon,
@@ -31,9 +33,16 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  // La agenda se resuelve en el servidor: llega dentro del HTML, sin un salto
-  // visual al cargar y sin que el buscador vea un hueco donde va el evento.
-  loader: () => getOpenEvents(),
+  // La agenda y la trayectoria se resuelven en el servidor: llegan dentro del HTML,
+  // sin un salto visual al cargar y sin que el buscador vea un hueco. Van en
+  // paralelo porque no dependen una de otra.
+  loader: async () => {
+    const [eventos, trayectoria] = await Promise.all([
+      getOpenEvents(),
+      getTrayectoria({ data: { limite: 2 } }),
+    ]);
+    return { eventos, trayectoria };
+  },
   component: Index,
 });
 
@@ -45,11 +54,16 @@ const navLinks = [
   { href: "#eventos", label: "Eventos" },
 ];
 
+/** Solo se enlaza cuando la sección existe: un ancla a la nada no lleva a ninguna parte. */
+const enlaceTrayectoria = { href: "#trayectoria", label: "Trayectoria" };
+
 const artistasOrdenados = [...artistas].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
 function Index() {
-  const eventos = Route.useLoaderData();
+  const { eventos, trayectoria } = Route.useLoaderData();
   const destacado = eventoDestacado(eventos);
+  const hayTrayectoria = trayectoria.eventos.length > 0;
+  const enlaces = hayTrayectoria ? [...navLinks, enlaceTrayectoria] : navLinks;
 
   const [navVisible, setNavVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -126,7 +140,7 @@ function Index() {
               id="nm-menu"
               className={`${menuOpen ? "flex" : "hidden"} absolute left-0 right-0 top-full flex-col gap-4 border-b border-white/10 bg-[rgba(5,3,8,0.97)] px-[4vw] py-6 lg:static lg:flex lg:flex-row lg:items-center lg:gap-8 lg:border-0 lg:bg-transparent lg:p-0`}
             >
-              {navLinks.map((link) => (
+              {enlaces.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
@@ -434,6 +448,29 @@ function Index() {
             )}
           </div>
         </section>
+
+        {/* TRAYECTORIA — solo con eventos pasados que ya tengan media cargada */}
+        {hayTrayectoria && (
+          <section id="trayectoria" className="nm-section nm-grain">
+            <div className="nm-container">
+              <p className="nm-eyebrow">05 — Historia</p>
+              <div className="nm-section-titulo-fila">
+                <h2 className="nm-display nm-section-title mt-3">Trayectoria</h2>
+                <Link to="/trayectoria" className="nm-btn nm-eventos-todos">
+                  Ver trayectoria completa
+                  {trayectoria.total > trayectoria.eventos.length ? ` (${trayectoria.total})` : ""}
+                </Link>
+              </div>
+              <div className="nm-rule" />
+
+              <div className="nm-tray-lista mt-12">
+                {trayectoria.eventos.map((evento) => (
+                  <TrayectoriaItem key={evento.slug} evento={evento} />
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* BOTÓN FLOTANTE DE CONTACTO */}

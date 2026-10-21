@@ -34,6 +34,7 @@ npm run build      # build de producción (Nitro/Cloudflare)
 node scripts/optimize-images.mjs            # informe de peso de public/Assets
 node scripts/optimize-images.mjs --apply    # reprocesa y sobrescribe
 
+npm run media        # fotos/vídeos de eventos: media-fuente/ → public/Assets/eventos/ + SQL
 npm run db:status    # qué migraciones de supabase/migrations/ están aplicadas
 npm run test:panel   # pruebas de funcionalidad y seguridad contra la base real
 ```
@@ -71,6 +72,7 @@ src/
     index.tsx         TODA la landing (~600 líneas): nav, hero, quiénes somos,
                       artistas, lanzamientos, evento destacado, modales y newsletter
     eventos.tsx       agenda pública: todos los eventos abiertos, con reserva directa
+    trayectoria.tsx   eventos pasados con su flyer y carrusel de fotos/vídeos
     admin/            panel privado: login, layout protegido `_panel` y secciones
     puerta/           control de entrada: login y layout protegido `_lista`
     routeTree.gen.ts  AUTOGENERADO — no editar a mano
@@ -84,6 +86,8 @@ src/
   schemas/            schemas zod compartidos entre cliente y servidor
   start.ts            middlewares de servidor: manejo de errores + CSRF para server functions
   server.ts           entry SSR que normaliza errores 500 tragados por h3
+public/Assets/eventos/<slug>/  todo lo de un evento: `flyer.jpg` y su media optimizada (`npm run media`)
+media-fuente/         originales de fotos y vídeos (en .gitignore; nunca bajo public/)
 public/Assets/        imágenes reales (rutas con mayúscula y espacios: "/Assets/logo nemorphic.png")
 supabase/migrations/  SQL versionado; se aplica a mano en el SQL Editor de Supabase
 scripts/              verificación (smoke, test:panel, db:status) y utilidades
@@ -113,6 +117,50 @@ docs/                 documentación: arquitectura, base de datos y guía de ope
   paquete. Preguntar antes de añadir una dependencia nueva.
 - **Git**: no reescribir historia publicada (rebase/amend/squash/force-push).
   `main` está en GitHub y reescribirlo rompe el clon de cualquiera que lo tenga.
+
+## Artistas: nombre artístico y alias
+
+En la web, en pies de foto, textos alternativos y correos **siempre sale el nombre
+artístico**, nunca el real ni el apodo. Cuando algo llegue con un nombre real, un
+apodo o una abreviatura (un archivo, un mensaje, un flyer), se asocia al artístico con
+esta tabla. Pueden ser abreviaciones: «Franco», «Diaz», «Tiba» o «JD» son personas
+reales, no nombres para publicar.
+
+| Nombre artístico | Nombre real        | También se les dice                 |
+| ---------------- | ------------------ | ----------------------------------- |
+| **J Løwℤ**       | Juan José López    | JLowz (es el dueño del proyecto)    |
+| **DSTRKT**       | Alejandro Acevedo  | Alejo, Alejandro (a veces «dstekt») |
+| **Do**           | Juan Camilo Diaz   | Diaz                                |
+| **A.L.L**        | Juan Manuel Franco | Franco, ALL                         |
+| **Ectasy**       | Juan Diego         | JD                                  |
+| **Blaue Nacht**  | Sergio Tibaduiza   | Tiba                                |
+
+La misma tabla vive en código en `scripts/artistas.mjs` (con más variantes de escritura).
+Si entra un artista nuevo, o cambia un nombre, se actualizan **las dos**: esta tabla,
+esa lista y `artistas[]` de `src/data/nemorphic.ts`. El orden de arriba es el de
+`artistas[]` y el que se usa para ordenar la media de un evento.
+
+## Media de los eventos (Trayectoria)
+
+Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
+`event_media.artists`, siempre con nombre artístico). Reglas de selección, por evento:
+
+- **Cada artista que tocó sale al menos una vez.** Si salen los seis, el pie dice «Todo
+  el line-up».
+- **Máximo 6 piezas por evento**: un vídeo por artista. Si en un evento están los seis
+  vídeos individuales, se ven los seis. Excepción pedida: **Nemorphic Pool Party lleva 7**,
+  con la **foto de todos juntos de primera** y sus seis vídeos.
+- **Individuales antes que back to back.** Un vídeo de dos artistas cuenta por los dos,
+  así que ya no hace falta uno individual de cada quien en esa pieza. Solo se usa un b2b
+  cuando no alcanza con individuales, y **no se repite la misma pareja en dos eventos
+  seguidos**.
+- Una foto de grupo cubre a todos los que salen en ella.
+- Orden en el carrusel: la foto de grupo primero, luego los artistas en el orden de
+  `artistas[]`.
+- Lo que no entra se guarda en una subcarpeta `_sin-usar/` dentro del evento.
+
+El nombre del archivo es el que fija todo (`3 Video Do y A.L.L.mp4`): ver la cabecera de
+`scripts/optimize-media.mjs`. El script entiende los alias y publica el artístico.
 
 ## Documentación
 
@@ -217,18 +265,44 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
 
 ### Migraciones
 
-Van de la 0001 a la 0007 y todas están aplicadas. Se aplican **a mano** desde el SQL
+Van de la 0001 a la 0009. La 0001–0007 están aplicadas; **la 0008 (`event_media`) y la 0009 (eventos pasados y rutas de flyers) están pendientes**. Se aplican **a mano** desde el SQL
 Editor de Supabase: la clave de servicio habla
 por PostgREST, que no permite crear ni alterar tablas. Comprueba el estado con
 `npm run db:status`, que dice qué archivo de `supabase/migrations/` falta por pegar.
 
 ## Próximo trabajo
 
-**Siguiente cambio: la sección de trayectoria** (historia y recorrido del sello en
-la landing). Aún sin diseño ni contenido: antes de escribir código, preguntar qué
-hitos va (eventos, lanzamientos, fechas, fotos) y dónde va dentro de `index.tsx`. Es
-contenido más que datos: seguir la skill `content` y, para el JSX/CSS, `ui` (clases
-`nm-*`). Al añadirla, sumar su comprobación al array `CHECKS` de `scripts/smoke.mjs`.
+**Trayectoria: el código está hecho, falta cargar la media y publicar.** Eventos
+pasados con flyer a la izquierda y carrusel de fotos/vídeos a la derecha: los dos
+últimos en la landing (`#trayectoria`, tras Eventos) y todos en `/trayectoria`. Solo
+entran eventos pasados **con al menos una fila en `event_media`**, así que mientras la
+tabla esté vacía no se ve nada (ni la sección, ni el enlace del menú; la página
+`/trayectoria` dice que viene en camino y lleva `noindex`). Si falta la tabla, la
+consulta falla en silencio y devuelve vacío: subir el código antes de la migración no
+rompe la landing.
+
+Para publicarla, en este orden:
+
+1. **Antes del deploy**: pegar `supabase/migrations/0008_trayectoria.sql` (tabla
+   `event_media`) en el SQL Editor. Comprobar con `npm run db:status`.
+2. `npm run media` (originales en `media-fuente/eventos/<Evento>/`, nunca bajo `public/`,
+   que se publica tal cual). Genera WebP en 480/800/1200 px, MP4 de 540 px (máx. 30 s,
+   30 fps, sin audio) con portada, y un `cargar.sql` por evento.
+3. `git push` y esperar a que Vercel termine el deploy.
+4. **Justo después del deploy**: pegar `supabase/migrations/0009_eventos_pasados.sql`. Mueve
+   las rutas de los flyers de UMBRA y Sembrando Conciencia a
+   `/Assets/eventos/<slug>/flyer.jpg` y crea Opening Nemorphic y Nemorphic Pool Party
+   (pasados y con las reservas cerradas). Va después porque antes la web en producción
+   buscaría un flyer que aún no existe en la ruta nueva.
+5. Pegar cada `cargar.sql` (el `returning` debe dar filas; si da 0, el evento no existe).
+   Desde ese momento aparece la sección.
+
+El flyer de cada evento es `public/Assets/eventos/<slug>/flyer.jpg` (JPEG, ≤ 1600 px).
+
+Rendimiento: todo `loading="lazy"` con `width`/`height`, los vídeos con `preload="none"`
+(solo bajan la portada hasta que alguien los reproduce). Objetivo: foto < 180 KB, vídeo
+< 4 MB y ≤ 30 s (el script recorta y avisa). Escritorio muestra 2 piezas a la vez
+(3 desde 1280 px), móvil 1.
 
 ### Decisiones ya tomadas (newsletter, reservas y panel — ya implementadas)
 

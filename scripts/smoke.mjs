@@ -177,6 +177,31 @@ async function main() {
     }
   }
 
+  // La trayectoria es pública. Sin eventos con media cargada debe decirlo (y pedir
+  // noindex); con ellos, traer el carrusel. Las dos ramas son válidas: lo que no
+  // puede pasar es una página rota.
+  const trayectoria = await fetch(`${baseUrl}/trayectoria`);
+  const trayectoriaHtml = await trayectoria.text();
+  if (trayectoria.status !== 200 || !trayectoriaHtml.includes("Trayectoria")) {
+    failures.push(`GET /trayectoria no muestra la página (status ${trayectoria.status})`);
+  } else if (trayectoriaHtml.includes("nm-tray-item")) {
+    if (!trayectoriaHtml.includes("application/ld+json")) {
+      failures.push("GET /trayectoria tiene eventos pero no los datos estructurados (JSON-LD)");
+    }
+  } else if (!trayectoriaHtml.includes("noindex")) {
+    failures.push("GET /trayectoria está vacía pero no lleva la meta robots noindex");
+  }
+
+  // La landing solo enseña la sección si hay trayectoria que mostrar. Si aparece,
+  // tiene que llevar el botón a la página completa; si no, no debe haber ni rastro.
+  const haySeccion = html.includes('id="trayectoria"');
+  if (haySeccion && !html.includes('href="/trayectoria"')) {
+    failures.push("La landing muestra #trayectoria pero sin el botón a /trayectoria");
+  }
+  if (!haySeccion && html.includes('href="#trayectoria"')) {
+    failures.push("La landing enlaza a #trayectoria pero la sección no existe");
+  }
+
   const puertaLogin = await fetch(`${baseUrl}/puerta/login`);
   const puertaHtml = await puertaLogin.text();
   if (puertaLogin.status !== 200 || !puertaHtml.includes("Clave del evento")) {

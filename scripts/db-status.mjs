@@ -75,6 +75,30 @@ const MIGRACIONES = [
     descripcion: "hora de cierre automático de las reservas de cada evento",
     comprobaciones: [{ tabla: "events", columnas: "reservations_close_at" }],
   },
+  {
+    archivo: "0008_trayectoria.sql",
+    descripcion: "fotos y vídeos de eventos pasados, para la sección Trayectoria",
+    comprobaciones: [
+      {
+        tabla: "event_media",
+        columnas: "id, event_id, kind, src, srcset, poster, alt, artists, position",
+      },
+    ],
+  },
+  {
+    archivo: "0009_eventos_pasados.sql",
+    descripcion: "flyers en carpetas por evento y los eventos pasados Opening y Pool Party",
+    // Solo cambia datos: se comprueba que existan las filas que crea.
+    comprobaciones: [
+      { tabla: "events", columnas: "slug", fila: ["slug", "opening-nemorphic"] },
+      { tabla: "events", columnas: "slug", fila: ["slug", "nemorphic-pool-party"] },
+      {
+        tabla: "events",
+        columnas: "slug, poster_url",
+        fila: ["poster_url", "/Assets/eventos/umbra/flyer.jpg"],
+      },
+    ],
+  },
 ];
 
 let pendientes = 0;

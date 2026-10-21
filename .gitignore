@@ -39,3 +39,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Originales de fotos y vídeos de eventos (pesan decenas de MB): solo viven en la
+# máquina de quien los procesa. Lo que se publica es lo que genera optimize-media.
+media-fuente/

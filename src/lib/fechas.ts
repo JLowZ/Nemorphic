@@ -31,6 +31,12 @@ export function fechaLarga(iso: string): string {
   return `${mayuscula(valor(lista, "weekday"))} ${valor(lista, "day")} de ${valor(lista, "month")}`;
 }
 
+/** "Sábado 26 de septiembre de 2026" — para el pasado, donde el año sí importa. */
+export function fechaCompleta(iso: string): string {
+  const lista = partes(iso, { year: "numeric" });
+  return `${fechaLarga(iso)} de ${valor(lista, "year")}`;
+}
+
 /** "SÁB 27 SEP" — para la cabecera de una tarjeta, donde no cabe la fecha larga. */
 export function fechaCorta(iso: string): string {
   const lista = partes(iso, { weekday: "short", day: "numeric", month: "short" });

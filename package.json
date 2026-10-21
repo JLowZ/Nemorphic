@@ -13,6 +13,7 @@
     "format": "prettier --write .",
     "smoke": "node scripts/smoke.mjs",
     "test:panel": "node --env-file=.env scripts/test-panel.mjs",
+    "media": "node scripts/optimize-media.mjs",
     "db:status": "node --env-file=.env scripts/db-status.mjs",
     "check": "npm run typecheck && npm run lint && npm run smoke"
   },

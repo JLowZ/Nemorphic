@@ -75,7 +75,7 @@ erDiagram
 | `name`, `tagline`      | `text`        | Nombre y frase del evento                                |
 | `starts_at`, `ends_at` | `timestamptz` | Se guardan con desfase de Colombia (`-05`)               |
 | `venue`, `address`     | `text`        | Lugar y dirección                                        |
-| `poster_url`           | `text`        | Ruta del flyer bajo `/Assets/`                           |
+| `poster_url`           | `text`        | Flyer: `/Assets/eventos/<slug>/flyer.jpg`                |
 | `capacity`             | `integer`     | `null` = sin límite de aforo                             |
 | `presale_price`        | `integer`     | **Lo que paga quien reservó**, aunque pague en la puerta |
 | `door_price`           | `integer`     | Lo que paga quien llega sin reserva. Solo informativo    |
@@ -90,6 +90,25 @@ garantiza la base con un índice parcial (`events_un_solo_destacado`), no el pan
 con dos marcados, la landing elegiría uno distinto según el orden en que Postgres
 devolviera las filas. La consulta pública filtra además por `reservations_open` y por
 fecha futura, así que un evento pasado desaparece de la web sin tocar nada.
+
+### `event_media`
+
+Fotos y vídeos de eventos pasados (migración 0008). Una fila por pieza.
+
+| Columna          | Tipo              | Notas                                                             |
+| ---------------- | ----------------- | ----------------------------------------------------------------- |
+| `event_id`       | `uuid` → `events` | `on delete cascade`: borrar el evento borra su media              |
+| `kind`           | `text`            | `photo` o `video`                                                 |
+| `src`            | `text`            | Foto: variante de 800 px. Vídeo: el MP4. Único por evento         |
+| `srcset`         | `text`            | Solo fotos (obligatorio): `ruta-480.webp 480w, …`                 |
+| `poster`         | `text`            | Solo vídeos (obligatorio): imagen previa a reproducir             |
+| `width`/`height` | `integer`         | De `src`; reservan el hueco para que la página no salte al cargar |
+| `alt`            | `text`            | Texto alternativo, en español                                     |
+| `artists`        | `text[]`          | Quién sale, con nombre artístico: es el pie de foto               |
+| `position`       | `integer`         | Orden en el carrusel                                              |
+
+Un evento pasado sale en Trayectoria **solo si tiene filas aquí**. No se escribe a mano:
+`npm run media` genera el SQL de carga.
 
 ### `reservations`
 

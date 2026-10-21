@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BajaRouteImport } from './routes/baja'
 import { Route as EventosRouteImport } from './routes/eventos'
-import { Route as ZzPanelChecksRouteImport } from './routes/zz-panel-checks'
+import { Route as TrayectoriaRouteImport } from './routes/trayectoria'
 import { Route as AdminPanelRouteImport } from './routes/admin/_panel'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as PuertaListaRouteImport } from './routes/puerta/_lista'
@@ -38,9 +38,9 @@ const EventosRoute = EventosRouteImport.update({
   path: '/eventos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ZzPanelChecksRoute = ZzPanelChecksRouteImport.update({
-  id: '/zz-panel-checks',
-  path: '/zz-panel-checks',
+const TrayectoriaRoute = TrayectoriaRouteImport.update({
+  id: '/trayectoria',
+  path: '/trayectoria',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPanelRoute = AdminPanelRouteImport.update({
@@ -93,7 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/baja': typeof BajaRoute
   '/eventos': typeof EventosRoute
-  '/zz-panel-checks': typeof ZzPanelChecksRoute
+  '/trayectoria': typeof TrayectoriaRoute
   '/admin': typeof AdminPanelRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/puerta': typeof PuertaListaRouteWithChildren
@@ -108,7 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/baja': typeof BajaRoute
   '/eventos': typeof EventosRoute
-  '/zz-panel-checks': typeof ZzPanelChecksRoute
+  '/trayectoria': typeof TrayectoriaRoute
   '/admin/login': typeof AdminLoginRoute
   '/puerta/login': typeof PuertaLoginRoute
   '/admin/boletin': typeof AdminPanelBoletinRoute
@@ -122,7 +122,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/baja': typeof BajaRoute
   '/eventos': typeof EventosRoute
-  '/zz-panel-checks': typeof ZzPanelChecksRoute
+  '/trayectoria': typeof TrayectoriaRoute
   '/admin/_panel': typeof AdminPanelRouteWithChildren
   '/admin/login': typeof AdminLoginRoute
   '/puerta/_lista': typeof PuertaListaRouteWithChildren
@@ -139,7 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/baja'
     | '/eventos'
-    | '/zz-panel-checks'
+    | '/trayectoria'
     | '/admin'
     | '/admin/login'
     | '/puerta'
@@ -154,7 +154,7 @@ export interface FileRouteTypes {
     | '/'
     | '/baja'
     | '/eventos'
-    | '/zz-panel-checks'
+    | '/trayectoria'
     | '/admin/login'
     | '/puerta/login'
     | '/admin/boletin'
@@ -167,7 +167,7 @@ export interface FileRouteTypes {
     | '/'
     | '/baja'
     | '/eventos'
-    | '/zz-panel-checks'
+    | '/trayectoria'
     | '/admin/_panel'
     | '/admin/login'
     | '/puerta/_lista'
@@ -183,7 +183,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BajaRoute: typeof BajaRoute
   EventosRoute: typeof EventosRoute
-  ZzPanelChecksRoute: typeof ZzPanelChecksRoute
+  TrayectoriaRoute: typeof TrayectoriaRoute
   AdminPanelRoute: typeof AdminPanelRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
   PuertaListaRoute: typeof PuertaListaRouteWithChildren
@@ -213,11 +213,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/zz-panel-checks': {
-      id: '/zz-panel-checks'
-      path: '/zz-panel-checks'
-      fullPath: '/zz-panel-checks'
-      preLoaderRoute: typeof ZzPanelChecksRouteImport
+    '/trayectoria': {
+      id: '/trayectoria'
+      path: '/trayectoria'
+      fullPath: '/trayectoria'
+      preLoaderRoute: typeof TrayectoriaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/_panel': {
@@ -320,7 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BajaRoute: BajaRoute,
   EventosRoute: EventosRoute,
-  ZzPanelChecksRoute: ZzPanelChecksRoute,
+  TrayectoriaRoute: TrayectoriaRoute,
   AdminPanelRoute: AdminPanelRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
   PuertaListaRoute: PuertaListaRouteWithChildren,
