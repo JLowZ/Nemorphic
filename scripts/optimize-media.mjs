@@ -6,7 +6,7 @@
 //   node scripts/optimize-media.mjs                      todos los eventos
 //   node scripts/optimize-media.mjs --evento "UMBRA"     solo esa carpeta
 //   node scripts/optimize-media.mjs --force              regenera aunque ya existan
-//   node scripts/optimize-media.mjs --con-audio          conserva el audio de los vídeos
+//   node scripts/optimize-media.mjs --sin-audio          quita el audio (por defecto se conserva)
 //   node scripts/optimize-media.mjs --max-seg 30         recorta los vídeos (30 s por defecto; 0 = no)
 //
 // ORIGINALES (no se suben a git; pesan decenas de MB):
@@ -74,7 +74,8 @@ const EXT_VIDEO = new Set([".mp4", ".mov", ".m4v", ".webm", ".mkv", ".avi"]);
 
 const args = process.argv.slice(2);
 const FORCE = args.includes("--force");
-const CON_AUDIO = args.includes("--con-audio");
+/** El audio se conserva: quien reproduce un vídeo espera oírlo. */
+const SIN_AUDIO = args.includes("--sin-audio");
 const iMax = args.indexOf("--max-seg");
 /** Duración máxima de cada vídeo, en segundos. 0 = sin recorte. */
 const MAX_SEG = iMax === -1 ? 30 : Number(args[iMax + 1]);
@@ -222,7 +223,7 @@ async function procesarVideo(origen, carpetaSalida, rutaPublica, base) {
         // El MP4 se puede empezar a ver antes de bajarse entero.
         "-movflags",
         "+faststart",
-        ...(CON_AUDIO ? ["-c:a", "aac", "-b:a", "96k"] : ["-an"]),
+        ...(SIN_AUDIO ? ["-an"] : ["-c:a", "aac", "-b:a", "96k", "-ac", "2"]),
         destino,
       ],
       { stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" },

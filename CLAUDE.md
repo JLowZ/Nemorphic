@@ -155,8 +155,11 @@ Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
   cuando no alcanza con individuales, y **no se repite la misma pareja en dos eventos
   seguidos**.
 - Una foto de grupo cubre a todos los que salen en ella.
-- Orden en el carrusel: la foto de grupo primero, luego los artistas en el orden de
-  `artistas[]`.
+- **Quién abre el carrusel:** J Løwℤ (el dueño) **no abre siempre**. En UMBRA sí abre él;
+  en el resto de eventos abre **otro artista elegido al azar** (un vídeo en el que no
+  salga J Løwℤ). Excepción: en Nemorphic Pool Party abre la foto de todos juntos.
+- Orden del resto: la foto de grupo (si no abrió) y luego los artistas en el orden de
+  `artistas[]`. Se fija con el número delante del nombre del archivo.
 - Lo que no entra se guarda en una subcarpeta `_sin-usar/` dentro del evento.
 
 El nombre del archivo es el que fija todo (`3 Video Do y A.L.L.mp4`): ver la cabecera de
@@ -287,7 +290,7 @@ Para publicarla, en este orden:
    `event_media`) en el SQL Editor. Comprobar con `npm run db:status`.
 2. `npm run media` (originales en `media-fuente/eventos/<Evento>/`, nunca bajo `public/`,
    que se publica tal cual). Genera WebP en 480/800/1200 px, MP4 de 540 px (máx. 30 s,
-   30 fps, sin audio) con portada, y un `cargar.sql` por evento.
+   30 fps, con audio AAC 96 kbps) con portada, y un `cargar.sql` por evento.
 3. `git push` y esperar a que Vercel termine el deploy.
 4. **Justo después del deploy**: pegar `supabase/migrations/0009_eventos_pasados.sql`. Mueve
    las rutas de los flyers de UMBRA y Sembrando Conciencia a
