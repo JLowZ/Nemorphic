@@ -292,9 +292,8 @@ alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archi
 
 No hay un cambio grande en curso. Pendientes conocidos:
 
-- **Confirmar la fecha de Opening Nemorphic.** La base dice 16 de enero de **2026**; el
-  usuario había dicho 2025. Si es 2025, basta un `update` de `starts_at` (con `-05`). El
-  lugar sigue vacío (el flyer solo dice «Ubicación con los contactos»); la web no lo pinta.
+- **Opening Nemorphic**: fue el 16 de enero de **2026** (confirmado). Falta el lugar: el
+  flyer solo dice «Ubicación con los contactos» y la web no pinta lo que está vacío.
 - **El smoke falla 3 comprobaciones desde que UMBRA pasó** (3 de octubre): busca «UMBRA»
   y «Reservar mi cupo» en la landing y en `/eventos`, y no hay ningún evento futuro con
   reservas abiertas. No es un fallo del código. Se arregla creando el próximo evento o
