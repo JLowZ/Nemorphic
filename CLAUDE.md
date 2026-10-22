@@ -145,8 +145,8 @@ esa lista y `artistas[]` de `src/data/nemorphic.ts`. El orden de arriba es el de
 Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
 `event_media.artists`, siempre con nombre artístico). Reglas de selección, por evento:
 
-- **Cada artista que tocó sale al menos una vez.** Si salen los seis, el pie dice «Todo
-  el line-up».
+- **Cada artista que tocó sale al menos una vez.** Si salen los seis, el pie dice
+  «Nemorphic» (son todos los del sello).
 - **Máximo 6 piezas por evento**: un vídeo por artista. Si en un evento están los seis
   vídeos individuales, se ven los seis. Excepción pedida: **Nemorphic Pool Party lleva 7**,
   con la **foto de todos juntos de primera** y sus seis vídeos.

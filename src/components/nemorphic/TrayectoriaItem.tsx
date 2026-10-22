@@ -75,12 +75,22 @@ export function TrayectoriaItem({
 }
 
 /**
+ * Un vídeo a la vez: al darle play a uno, se pausan los demás de la página (de cualquier
+ * evento y carrusel). Si no, dos vídeos sonarían encima uno del otro.
+ */
+function soloUnVideo(evento: React.SyntheticEvent<HTMLVideoElement>) {
+  for (const video of document.querySelectorAll<HTMLVideoElement>("video.nm-tray-media")) {
+    if (video !== evento.currentTarget) video.pause();
+  }
+}
+
+/**
  * Pie de foto: quién sale. Siempre con el nombre artístico (la tabla de alias está en
  * CLAUDE.md y en scripts/artistas.mjs): «A.L.L y Do», «A.L.L, DSTRKT y J Løwℤ». Si
- * salen todos, «Todo el line-up» — listar seis nombres no dice más que eso.
+ * salen los seis, el pie es «Nemorphic»: son todos los del sello, y listarlos no dice más.
  */
 function pieArtistas(salen: ReadonlyArray<string>): string {
-  if (salen.length >= artistas.length) return "Todo el line-up";
+  if (salen.length >= artistas.length) return "Nemorphic";
   if (salen.length <= 1) return salen.join("");
   return `${salen.slice(0, -1).join(", ")} y ${salen[salen.length - 1]}`;
 }
@@ -101,6 +111,7 @@ function Pieza({ pieza }: { pieza: MediaEvento }) {
         controls
         playsInline
         preload="none"
+        onPlay={soloUnVideo}
         poster={pieza.poster ?? undefined}
         width={pieza.width}
         height={pieza.height}

@@ -83,9 +83,9 @@ export function resolverArtistas(texto) {
   return { artistas, desconocidos };
 }
 
-/** «A», «A y B», «A, B y C» — y «todo el line-up» si salen todos. */
+/** «A», «A y B», «A, B y C» — y «todos los artistas de Nemorphic» si salen los seis. */
 export function nombresNaturales(artistas) {
-  if (artistas.length === ARTISTAS.length) return "todo el line-up";
+  if (artistas.length === ARTISTAS.length) return "todos los artistas de Nemorphic";
   if (artistas.length <= 1) return artistas.join("");
   return `${artistas.slice(0, -1).join(", ")} y ${artistas[artistas.length - 1]}`;
 }
