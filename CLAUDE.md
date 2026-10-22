@@ -259,6 +259,21 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   **`/admin` → Resumen**: es una decisión de anuncio, no del día del evento. **Crear un evento sigue siendo un `insert` a mano** en el SQL
   Editor: el equipo habla antes de anunciar, así que no hay formulario de alta. El
   flyer y el eslogan pueden faltar; la tarjeta cae a un fondo con el nombre.
+- **Trayectoria** (publicada): eventos pasados con el flyer a la izquierda y, a la
+  derecha, un carrusel de fotos y vídeos con pie de foto de los artistas que salen.
+  La landing muestra los dos últimos (`#trayectoria`, después de Eventos, con enlace en
+  el menú) y `/trayectoria` los muestra todos, con datos estructurados `MusicEvent`
+  para el buscador. Los datos salen de `events` (`starts_at` pasado) y `event_media`
+  (migración 0008, una fila por pieza; `src/actions/trayectoria.ts`). **Un evento solo
+  entra si tiene al menos una pieza cargada**; sin ninguna, la sección y el enlace del
+  menú no existen y `/trayectoria` lleva `noindex`. Si falta la tabla, la consulta
+  devuelve vacío y no rompe la landing. Escritorio muestra 2 piezas a la vez (3 desde
+  1280 px), móvil 1. Las fotos se ven enteras y los vídeos se recortan a 4:5. Todo es
+  `loading="lazy"` con `width`/`height`, y los vídeos con `preload="none"`: solo bajan su
+  portada hasta que alguien los reproduce. **Los vídeos conservan el audio**: una versión
+  anterior del script lo quitaba y el navegador los mostraba silenciados, con el volumen
+  bloqueado. Eventos cargados: UMBRA, Sembrando Conciencia, Nemorphic Pool Party y
+  Opening Nemorphic.
 - **Server functions**: en `src/actions/`. `src/start.ts` deja activo el middleware
   CSRF. Cada acción llama por su cuenta a la guarda que le toca, de
   `src/lib/require-admin.ts`: `requireAdmin()` para lo del panel (rechaza incluso
@@ -268,44 +283,42 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
 
 ### Migraciones
 
-Van de la 0001 a la 0009. La 0001–0007 están aplicadas; **la 0008 (`event_media`) y la 0009 (eventos pasados y rutas de flyers) están pendientes**. Se aplican **a mano** desde el SQL
-Editor de Supabase: la clave de servicio habla
-por PostgREST, que no permite crear ni alterar tablas. Comprueba el estado con
-`npm run db:status`, que dice qué archivo de `supabase/migrations/` falta por pegar.
+Van de la 0001 a la 0009 y **todas están aplicadas**. Se aplican **a mano** desde el SQL
+Editor de Supabase: la clave de servicio habla por PostgREST, que no permite crear ni
+alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archivo de
+`supabase/migrations/` falta por pegar.
 
 ## Próximo trabajo
 
-**Trayectoria: el código está hecho, falta cargar la media y publicar.** Eventos
-pasados con flyer a la izquierda y carrusel de fotos/vídeos a la derecha: los dos
-últimos en la landing (`#trayectoria`, tras Eventos) y todos en `/trayectoria`. Solo
-entran eventos pasados **con al menos una fila en `event_media`**, así que mientras la
-tabla esté vacía no se ve nada (ni la sección, ni el enlace del menú; la página
-`/trayectoria` dice que viene en camino y lleva `noindex`). Si falta la tabla, la
-consulta falla en silencio y devuelve vacío: subir el código antes de la migración no
-rompe la landing.
+No hay un cambio grande en curso. Pendientes conocidos:
 
-Para publicarla, en este orden:
+- **Confirmar la fecha de Opening Nemorphic.** La base dice 16 de enero de **2026**; el
+  usuario había dicho 2025. Si es 2025, basta un `update` de `starts_at` (con `-05`). El
+  lugar sigue vacío (el flyer solo dice «Ubicación con los contactos»); la web no lo pinta.
+- **El smoke falla 3 comprobaciones desde que UMBRA pasó** (3 de octubre): busca «UMBRA»
+  y «Reservar mi cupo» en la landing y en `/eventos`, y no hay ningún evento futuro con
+  reservas abiertas. No es un fallo del código. Se arregla creando el próximo evento o
+  haciendo que esas comprobaciones no dependan de un evento concreto.
+- **Analítica y dominio propio** siguen sin decidirse (ver memoria del proyecto).
 
-1. **Antes del deploy**: pegar `supabase/migrations/0008_trayectoria.sql` (tabla
-   `event_media`) en el SQL Editor. Comprobar con `npm run db:status`.
-2. `npm run media` (originales en `media-fuente/eventos/<Evento>/`, nunca bajo `public/`,
-   que se publica tal cual). Genera WebP en 480/800/1200 px, MP4 de 540 px (máx. 30 s,
-   30 fps, con audio AAC 96 kbps) con portada, y un `cargar.sql` por evento.
-3. `git push` y esperar a que Vercel termine el deploy.
-4. **Justo después del deploy**: pegar `supabase/migrations/0009_eventos_pasados.sql`. Mueve
-   las rutas de los flyers de UMBRA y Sembrando Conciencia a
-   `/Assets/eventos/<slug>/flyer.jpg` y crea Opening Nemorphic y Nemorphic Pool Party
-   (pasados y con las reservas cerradas). Va después porque antes la web en producción
-   buscaría un flyer que aún no existe en la ruta nueva.
-5. Pegar cada `cargar.sql` (el `returning` debe dar filas; si da 0, el evento no existe).
-   Desde ese momento aparece la sección.
+### Añadir un evento pasado nuevo a Trayectoria
 
-El flyer de cada evento es `public/Assets/eventos/<slug>/flyer.jpg` (JPEG, ≤ 1600 px).
+1. Crear el evento con un `insert` a mano en `events` (`reservations_open = false`, fecha
+   pasada, con `poster_url = '/Assets/eventos/<slug>/flyer.jpg'`). El flyer, JPEG de
+   ≤ 1600 px, va en `public/Assets/eventos/<slug>/flyer.jpg`. Lo mismo vale para que un
+   evento ya hecho (como UMBRA) pase solo a la sección cuando llegue su fecha.
+2. Dejar los originales en `media-fuente/eventos/<Nombre del evento>/` (nunca bajo
+   `public/`, que se publica tal cual) con nombres como `1 Video Do.mp4`. Las reglas de
+   selección y de orden están en «Media de los eventos».
+3. `npm run media`: WebP en 480/800/1200 px, MP4 de 540 px (máx. 30 s, 30 fps, audio AAC
+   96 kbps) con portada, y un `cargar.sql` por evento. Avisa si una pieza pesa de más.
+4. `git push` y esperar el deploy; después pegar el `cargar.sql` en el SQL Editor (el
+   `returning` debe dar filas; si da 0, el slug de la carpeta no coincide con
+   `events.slug`). Se puede pegar de nuevo para cambiar el orden.
 
-Rendimiento: todo `loading="lazy"` con `width`/`height`, los vídeos con `preload="none"`
-(solo bajan la portada hasta que alguien los reproduce). Objetivo: foto < 180 KB, vídeo
-< 4 MB y ≤ 30 s (el script recorta y avisa). Escritorio muestra 2 piezas a la vez
-(3 desde 1280 px), móvil 1.
+Orden de despliegue cuando una migración mueve rutas de archivos (como pasó con la 0009):
+primero el deploy con los archivos, después la migración. Al revés, la web en producción
+apunta a un archivo que todavía no existe.
 
 ### Decisiones ya tomadas (newsletter, reservas y panel — ya implementadas)
 
