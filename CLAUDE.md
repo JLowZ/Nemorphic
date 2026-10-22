@@ -272,7 +272,12 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   `loading="lazy"` con `width`/`height`, y los vídeos con `preload="none"`: solo bajan su
   portada hasta que alguien los reproduce. **Los vídeos conservan el audio**: una versión
   anterior del script lo quitaba y el navegador los mostraba silenciados, con el volumen
-  bloqueado. Eventos cargados: UMBRA, Sembrando Conciencia, Nemorphic Pool Party y
+  bloqueado.
+  **Los archivos de media llevan una huella del contenido en el nombre**
+  (`video-do.70c7225c.mp4`): Vercel sirve `/Assets` con `cache-control: immutable` por un
+  año, y un archivo que cambia sin cambiar de nombre se queda viejo en los navegadores que
+  ya lo bajaron (así siguieron los vídeos mudos). Nunca renombrar a mano esos archivos: los
+  genera `npm run media`. Eventos cargados: UMBRA, Sembrando Conciencia, Nemorphic Pool Party y
   Opening Nemorphic.
 - **Server functions**: en `src/actions/`. `src/start.ts` deja activo el middleware
   CSRF. Cada acción llama por su cuenta a la guarda que le toca, de
@@ -311,9 +316,13 @@ No hay un cambio grande en curso. Pendientes conocidos:
    selección y de orden están en «Media de los eventos».
 3. `npm run media`: WebP en 480/800/1200 px, MP4 de 540 px (máx. 30 s, 30 fps, audio AAC
    96 kbps) con portada, y un `cargar.sql` por evento. Avisa si una pieza pesa de más.
-4. `git push` y esperar el deploy; después pegar el `cargar.sql` en el SQL Editor (el
-   `returning` debe dar filas; si da 0, el slug de la carpeta no coincide con
-   `events.slug`). Se puede pegar de nuevo para cambiar el orden.
+4. `git push`, esperar el deploy y **pegar enseguida** el `cargar.sql` en el SQL Editor
+   (el `returning` debe dar filas; si da 0, el slug de la carpeta no coincide con
+   `events.slug`). Cada `cargar.sql` es el estado completo de la media del evento: borra
+   lo que había y lo inserta de nuevo, así que sirve también para cambiar el orden. Si
+   se pega antes del deploy, las filas apuntan a archivos que aún no existen; si se pega
+   mucho después, la web apunta a archivos que ya no están: ese es el hueco que hay que
+   cerrar rápido.
 
 Orden de despliegue cuando una migración mueve rutas de archivos (como pasó con la 0009):
 primero el deploy con los archivos, después la migración. Al revés, la web en producción

@@ -29,8 +29,13 @@
 //
 // SALIDA (esto sí se sube):
 //
-//   public/Assets/eventos/<slug>/foto-<dj>-480.webp · -800.webp · -1200.webp
-//   public/Assets/eventos/<slug>/video-<dj>.mp4 y video-<dj>-portada.webp
+//   public/Assets/eventos/<slug>/foto-<dj>-480.<huella>.webp · -800 · -1200
+//   public/Assets/eventos/<slug>/video-<dj>.<huella>.mp4 y video-<dj>-portada.<huella>.webp
+//
+// La <huella> son 8 caracteres del contenido del archivo. Vercel sirve /Assets con
+// `cache-control: immutable` (un año): si un archivo cambiara SIN cambiar de nombre, los
+// navegadores que ya lo bajaron seguirían con la versión vieja (pasó: los vídeos sin
+// audio). Con huella, un archivo distinto es una URL distinta y nunca hay caché vieja.
 //   media-fuente/eventos/<Nombre del evento>/cargar.sql   ← se pega en Supabase
 //
 // El <slug> sale del nombre de la carpeta y tiene que coincidir con `events.slug`.
@@ -39,9 +44,19 @@
 // Requiere `ffmpeg` en el PATH (o en la variable FFMPEG) solo para los vídeos.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { rm } from "node:fs/promises";
-import { extname, join, parse } from "node:path";
+import { basename, extname, join, parse } from "node:path";
 
 import sharp from "sharp";
 
@@ -126,6 +141,54 @@ function textoAlternativo(tipo, artistas, evento) {
     : `${que} de ${evento}`;
 }
 
+/** Los 8 primeros caracteres del hash del contenido. */
+function huella(archivo) {
+  return createHash("sha1").update(readFileSync(archivo)).digest("hex").slice(0, 8);
+}
+
+/**
+ * `base.ext` → `base.<huella>.ext`. Devuelve la ruta nueva. Si ya existe un archivo con
+ * ese nombre, el contenido es idéntico por construcción y basta con borrar el sobrante.
+ */
+function sellar(ruta) {
+  const { dir, name, ext } = parse(ruta);
+  const sellada = join(dir, `${name}.${huella(ruta)}${ext}`);
+  if (existsSync(sellada)) rmSync(ruta);
+  else renameSync(ruta, sellada);
+  return sellada;
+}
+
+/** `nombre.<huella>.ext` ya generado, si existe. */
+function buscarSellado(dir, nombre, ext) {
+  const patron = new RegExp(
+    `^${nombre.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\.[0-9a-f]{8}${ext}$`,
+  );
+  const encontrado = readdirSync(dir).find((f) => patron.test(f));
+  return encontrado ? join(dir, encontrado) : null;
+}
+
+/** Borra las versiones anteriores de un archivo (con huella o sin ella). */
+function borrarSalidas(dir, nombre, ext) {
+  const previo = buscarSellado(dir, nombre, ext);
+  if (previo) rmSync(previo);
+  rmSync(join(dir, `${nombre}${ext}`), { force: true });
+}
+
+/**
+ * El archivo ya generado y sellado de `nombre`, o el de una versión anterior del script
+ * sin huella, que se sella (mismo contenido, nombre nuevo). Null si hay que generarlo.
+ */
+function existente(dir, nombre, ext) {
+  if (FORCE) {
+    borrarSalidas(dir, nombre, ext);
+    return null;
+  }
+  const sellado = buscarSellado(dir, nombre, ext);
+  if (sellado) return sellado;
+  const antiguo = join(dir, `${nombre}${ext}`);
+  return existsSync(antiguo) ? sellar(antiguo) : null;
+}
+
 async function procesarFoto(origen, carpetaSalida, rutaPublica, base) {
   const salidas = [];
   const meta = await sharp(origen).rotate().metadata();
@@ -135,24 +198,26 @@ async function procesarFoto(origen, carpetaSalida, rutaPublica, base) {
     meta.orientation && meta.orientation >= 5 ? (meta.height ?? 0) : (meta.width ?? 0);
 
   for (const ancho of ANCHOS) {
-    const destino = join(carpetaSalida, `${base}-${ancho}.webp`);
     // No se agranda nunca: una foto de 700 px no gana nada con un «1200w».
     const real = Math.min(ancho, anchoOriginal || ancho);
     if (salidas.some((s) => s.ancho === real)) continue;
 
-    if (FORCE || !existsSync(destino)) {
+    const nombre = `${base}-${ancho}`;
+    let destino = existente(carpetaSalida, nombre, ".webp");
+    if (!destino) {
+      const temporal = join(carpetaSalida, `${nombre}.webp`);
       await sharp(origen)
         .rotate()
         .resize({ width: real, withoutEnlargement: true })
         .webp({ quality: CALIDAD_WEBP, effort: 5 })
-        .toFile(destino);
+        .toFile(temporal);
+      destino = sellar(temporal);
     }
     const info = await sharp(destino).metadata();
-    salidas.push({ ancho: real, ruta: `${rutaPublica}/${base}-${ancho}.webp`, destino, info });
+    salidas.push({ ancho: real, ruta: `${rutaPublica}/${basename(destino)}`, destino, info });
   }
 
-  const principal =
-    salidas.find((s) => s.ruta.endsWith(`-${ANCHO_BASE}.webp`)) ?? salidas[salidas.length - 1];
+  const principal = salidas.find((s) => s.ancho === ANCHO_BASE) ?? salidas[salidas.length - 1];
 
   for (const s of salidas) {
     const peso = statSync(s.destino).size;
@@ -184,10 +249,10 @@ function sondear(archivo) {
 }
 
 async function procesarVideo(origen, carpetaSalida, rutaPublica, base) {
-  const destino = join(carpetaSalida, `${base}.mp4`);
-  const portada = join(carpetaSalida, `${base}-portada.webp`);
+  let destino = existente(carpetaSalida, base, ".mp4");
 
-  if (FORCE || !existsSync(destino)) {
+  if (!destino) {
+    const temporal = join(carpetaSalida, `${base}.mp4`);
     const filtros = `scale='min(${ANCHO_VIDEO},iw)':-2`;
     const original = sondear(origen);
     const recortar = MAX_SEG > 0 && original > MAX_SEG;
@@ -224,24 +289,28 @@ async function procesarVideo(origen, carpetaSalida, rutaPublica, base) {
         "-movflags",
         "+faststart",
         ...(SIN_AUDIO ? ["-an"] : ["-c:a", "aac", "-b:a", "96k", "-ac", "2"]),
-        destino,
+        temporal,
       ],
       { stdio: ["ignore", "ignore", "pipe"], encoding: "utf8" },
     );
     if (r.status !== 0) throw new Error(`ffmpeg falló con ${origen}:\n${r.stderr?.slice(-600)}`);
+    destino = sellar(temporal);
   }
 
-  if (FORCE || !existsSync(portada)) {
-    const temporal = join(carpetaSalida, `${base}-frame.png`);
+  let portada = existente(carpetaSalida, `${base}-portada`, ".webp");
+  if (!portada) {
+    const frame = join(carpetaSalida, `${base}-frame.png`);
+    const temporal = join(carpetaSalida, `${base}-portada.webp`);
     // Un segundo adentro evita el fotograma negro con que empiezan muchos clips.
     const duracion = sondear(destino);
     const t = duracion > 2 ? "1" : "0";
-    const r = spawnSync(FFMPEG, ["-y", "-ss", t, "-i", destino, "-frames:v", "1", temporal], {
+    const r = spawnSync(FFMPEG, ["-y", "-ss", t, "-i", destino, "-frames:v", "1", frame], {
       stdio: "ignore",
     });
     if (r.status !== 0) throw new Error(`No se pudo sacar la portada de ${origen}`);
-    await sharp(temporal).webp({ quality: CALIDAD_WEBP, effort: 5 }).toFile(portada);
-    await rm(temporal, { force: true });
+    await sharp(frame).webp({ quality: CALIDAD_WEBP, effort: 5 }).toFile(temporal);
+    await rm(frame, { force: true });
+    portada = sellar(temporal);
   }
 
   const info = await sharp(portada).metadata();
@@ -254,9 +323,9 @@ async function procesarVideo(origen, carpetaSalida, rutaPublica, base) {
 
   return {
     kind: "video",
-    src: `${rutaPublica}/${base}.mp4`,
+    src: `${rutaPublica}/${basename(destino)}`,
     srcset: null,
-    poster: `${rutaPublica}/${base}-portada.webp`,
+    poster: `${rutaPublica}/${basename(portada)}`,
     width: info.width,
     height: info.height,
     pesos: [peso, statSync(portada).size],
@@ -284,7 +353,14 @@ function generarSql(slug, piezas) {
     .join(",\n");
 
   return `-- Generado por scripts/optimize-media.mjs — pega esto en el SQL Editor de Supabase.
--- Requiere la migración 0008 aplicada y el evento creado (0009). Se puede pegar dos veces.
+-- Requiere la migración 0008 aplicada y el evento creado (0009). Se puede pegar las veces
+-- que haga falta: siempre deja la media del evento exactamente como está aquí.
+
+-- Este archivo es el estado COMPLETO de la media del evento: primero se borra lo que había
+-- y luego se inserta. Hace falta porque los archivos llevan huella en el nombre: si uno
+-- cambia, su fila antigua (con el nombre viejo) no se actualizaría sino que se duplicaría.
+delete from public.event_media
+where event_id in (select id from public.events where slug = ${sql(slug)});
 
 insert into public.event_media (event_id, kind, src, srcset, poster, width, height, alt, artists, position)
 select e.id, v.kind, v.src, v.srcset, v.poster, v.width, v.height, v.alt, v.artists, v.position
