@@ -103,7 +103,7 @@ La landing muestra **un solo evento**, el destacado. Los demás están en la pá
 **Eventos** (`/eventos`), a la que se llega con el botón que hay junto al título de
 la sección. Cada tarjeta de esa página abre la reserva **con ese evento ya elegido**,
 así que su enlace se puede mandar por WhatsApp o Instagram:
-`nemorphic.vercel.app/eventos?reservar=umbra`.
+`nemorphic.vercel.app/eventos?reservar=la-nocturna`.
 
 Para cambiar cuál se destaca: **`/admin` → Resumen → Evento principal**, y pulsa
 **"Mostrar este"** en el que quieras. Solo puede haber uno; al marcar el nuevo, el

@@ -170,11 +170,18 @@ Si aparece algo como PENDIENTE:
 3. **Run**
 4. `npm run db:status` otra vez para confirmar
 
-| Archivo                        | Qué añade                                              |
-| ------------------------------ | ------------------------------------------------------ |
-| `0001_reservas.sql`            | Las cuatro tablas base, índices, RLS y el evento UMBRA |
-| `0002_suscriptores_nombre.sql` | `subscribers.name`, para personalizar el boletín       |
-| `0003_pagos_y_puerta.sql`      | Precios por evento, estado de pago y `app_settings`    |
+| Archivo                         | Qué añade                                                      |
+| ------------------------------- | -------------------------------------------------------------- |
+| `0001_reservas.sql`             | Las cuatro tablas base, índices, RLS y el evento UMBRA         |
+| `0002_suscriptores_nombre.sql`  | `subscribers.name`, para personalizar el boletín               |
+| `0003_pagos_y_puerta.sql`       | Precios por evento, estado de pago y `app_settings`            |
+| `0004_boletin.sql`              | Registro de boletines enviados (`campaigns`, `campaign_sends`) |
+| `0005_eventos_multiples.sql`    | `events.featured`: cuál evento sale en la portada              |
+| `0006_sembrando_conciencia.sql` | Datos de Sembrando Conciencia                                  |
+| `0007_cierre_de_reservas.sql`   | `events.reservations_close_at`: cierre automático              |
+| `0008_trayectoria.sql`          | `event_media`: fotos y vídeos de eventos pasados               |
+| `0009_eventos_pasados.sql`      | Flyers por carpeta y los eventos Opening y Pool Party          |
+| `0010_la_nocturna.sql`          | El próximo evento: La Nocturna (20 de noviembre de 2026)       |
 
 ### Reglas al escribir una migración
 
