@@ -33,16 +33,16 @@ returning slug, poster_url;
 -- 2. Eventos pasados
 -- ---------------------------------------------------------------------------
 
--- Opening Nemorphic — 16 de enero de 2025 (el flyer no lleva fecha; la dio el equipo).
--- Arrancó a las 11:30 PM según el flyer. Hora de cierre y lugar: sin confirmar, y el
--- flyer solo dice «Ubicación con los contactos». Quedan vacíos y la web no los pinta.
+-- Opening Nemorphic — 16 de enero de 2026 (el flyer no lleva fecha; la dio el equipo).
+-- Arrancó a las 11:30 PM según el flyer. El flyer solo dice «Ubicación con los contactos»; el equipo confirmó que fue en el centro de
+-- Manizales, por la carrera 22, a 5 minutos del Parque Caldas. La hora de cierre queda vacía.
 insert into public.events (slug, name, starts_at, ends_at, venue, poster_url, reservations_open)
 values (
   'opening-nemorphic',
   'Opening Nemorphic',
   '2026-01-16 23:30:00-05',
   null,
-  null,
+  'Carrera 22, a 5 minutos del Parque Caldas (centro de Manizales)',
   '/Assets/eventos/opening-nemorphic/flyer.jpg',
   false
 )

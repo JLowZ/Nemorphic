@@ -38,12 +38,7 @@ Después del viernes 20 de noviembre de 2026: cargar su media (ver «Añadir un 
 pasado nuevo a Trayectoria» en `CLAUDE.md`), crear o destacar el siguiente evento y
 comprobar que `npm run smoke` vuelve a pasar (necesita un evento con reservas abiertas).
 
-### 2. Opening Nemorphic: el lugar
-
-El flyer solo dice «Ubicación con los contactos». Falta el dato; la web no pinta lo
-que está vacío.
-
-### 3. Analítica de la web
+### 2. Analítica de la web
 
 Pendiente de decidir. Recomendación: empezar por **Vercel Analytics** (un clic, sin
 cookies, sin datos personales) y valorar después Microsoft Clarity para mapas de

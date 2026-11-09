@@ -315,8 +315,6 @@ alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archi
 
 No hay un cambio grande en curso. Pendientes conocidos:
 
-- **Opening Nemorphic**: fue el 16 de enero de **2026** (confirmado). Falta el lugar: el
-  flyer solo dice «Ubicación con los contactos» y la web no pinta lo que está vacío.
 - **El smoke necesita un evento con reservas abiertas**: busca «Reservar mi cupo» en la
   landing y en `/eventos`, sin depender del nombre del evento. Cuando pase **La Nocturna**
   (20 de noviembre de 2026) y no haya otro creado, esas comprobaciones fallarán sin que sea
@@ -324,6 +322,11 @@ No hay un cambio grande en curso. Pendientes conocidos:
 - **Después de La Nocturna**: moverla a Trayectoria (ver «Añadir un evento pasado nuevo»)
   y destacar el siguiente evento en `/admin` → Resumen.
 - **Analítica y dominio propio** siguen sin decidirse (ver memoria del proyecto).
+
+**Archivos que el usuario deja sueltos en la raíz** (un flyer, una foto, un vídeo): se mueven
+siempre a su carpeta y no se dejan copias. Flyer optimizado → `public/Assets/eventos/<slug>/flyer.jpg`;
+originales de fotos y vídeos → `media-fuente/eventos/<Nombre del evento>/`. El original suelto se
+borra una vez colocado (el usuario ya dio permiso para esto).
 
 ### Añadir un evento pasado nuevo a Trayectoria
 
