@@ -259,6 +259,24 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   **`/admin` → Resumen**: es una decisión de anuncio, no del día del evento. **Crear un evento sigue siendo un `insert` a mano** en el SQL
   Editor: el equipo habla antes de anunciar, así que no hay formulario de alta. El
   flyer y el eslogan pueden faltar; la tarjeta cae a un fondo con el nombre.
+- **Próximo evento: La Nocturna** (`slug la-nocturna`): viernes 20 de noviembre de 2026,
+  8 PM a 3 AM, Av. Santander #55-04, Manizales (La Nocturna Ecosistema Musical). Es el
+  evento destacado, con reservas abiertas y cierre automático ese día a las **6:00 PM**
+  (Colombia). 15K con reserva, 20K en puerta. Flyer en
+  `public/Assets/eventos/la-nocturna/flyer.jpg`; datos en la migración 0010. Se creó por
+  la API con la clave de servicio, no pegando el SQL (el efecto es el mismo).
+- **Cron anti-pausa de Supabase**: el plan gratuito pausa el proyecto tras 7 días sin
+  actividad en la base (solo cuentan consultas a la base, no a Auth ni Storage). El
+  workflow `.github/workflows/mantener-supabase.yml` corre a las 8 AM y 8 PM de Colombia,
+  cuenta filas de `subscribers` y `events` con la clave de servicio y deja en el resumen
+  de la ejecución cuántos suscriptores activos y nuevos (últimas 12 h) hay. Si Supabase no
+  responde, falla y GitHub avisa por correo. **El repo es público: el workflow solo
+  imprime conteos, nunca correos ni nombres.** Necesita los secretos del repo
+  `SUPABASE_URL` y `SUPABASE_SECRET_KEY` (ya cargados). GitHub desactiva los workflows
+  programados tras 60 días sin commits; se reactiva con un clic en la pestaña Actions.
+  Si Supabase se pausa de todos modos, tras reanudarlo la caché del esquema tarda unos
+  minutos y las consultas dan `PGRST205` («Could not find the table») aunque los datos
+  estén intactos: esperar y repetir.
 - **Trayectoria** (publicada): eventos pasados con el flyer a la izquierda y, a la
   derecha, un carrusel de fotos y vídeos con pie de foto de los artistas que salen.
   La landing muestra los dos últimos (`#trayectoria`, después de Eventos, con enlace en
@@ -288,7 +306,7 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
 
 ### Migraciones
 
-Van de la 0001 a la 0009 y **todas están aplicadas**. Se aplican **a mano** desde el SQL
+Van de la 0001 a la 0010 y **todas están aplicadas**. Se aplican **a mano** desde el SQL
 Editor de Supabase: la clave de servicio habla por PostgREST, que no permite crear ni
 alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archivo de
 `supabase/migrations/` falta por pegar.
@@ -299,10 +317,12 @@ No hay un cambio grande en curso. Pendientes conocidos:
 
 - **Opening Nemorphic**: fue el 16 de enero de **2026** (confirmado). Falta el lugar: el
   flyer solo dice «Ubicación con los contactos» y la web no pinta lo que está vacío.
-- **El smoke falla 3 comprobaciones desde que UMBRA pasó** (3 de octubre): busca «UMBRA»
-  y «Reservar mi cupo» en la landing y en `/eventos`, y no hay ningún evento futuro con
-  reservas abiertas. No es un fallo del código. Se arregla creando el próximo evento o
-  haciendo que esas comprobaciones no dependan de un evento concreto.
+- **El smoke necesita un evento con reservas abiertas**: busca «Reservar mi cupo» en la
+  landing y en `/eventos`, sin depender del nombre del evento. Cuando pase **La Nocturna**
+  (20 de noviembre de 2026) y no haya otro creado, esas comprobaciones fallarán sin que sea
+  un fallo del código: se arregla creando el siguiente evento.
+- **Después de La Nocturna**: moverla a Trayectoria (ver «Añadir un evento pasado nuevo»)
+  y destacar el siguiente evento en `/admin` → Resumen.
 - **Analítica y dominio propio** siguen sin decidirse (ver memoria del proyecto).
 
 ### Añadir un evento pasado nuevo a Trayectoria

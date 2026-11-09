@@ -27,9 +27,6 @@ const CHECKS = [
   ["J Løwℤ", "primer artista renderizado"],
   ["Blaue Nacht", "último artista renderizado"],
   ["w.soundcloud.com/player", "embed de SoundCloud"],
-  // El evento sale de la base, no del JSX: si esto falla, o no hay evento
-  // destacado con reservas abiertas, o la consulta se rompió.
-  ["UMBRA", "evento destacado"],
   ["/Assets/logo nemorphic.png", "logo desde /Assets"],
   // Las familias cargadas deben coincidir con --nm-font-display y
   // --nm-font-secondary de styles.css, o el sitio cae al fallback del sistema.
@@ -170,7 +167,7 @@ async function main() {
   const agendaHtml = await agenda.text();
   for (const [needle, label] of [
     ["Todos los eventos", "título de la agenda"],
-    ["UMBRA", "evento en la agenda"],
+    ["Reservar mi cupo", "evento con reservas abiertas en la agenda"],
   ]) {
     if (agenda.status !== 200 || !agendaHtml.includes(needle)) {
       failures.push(`GET /eventos no trae ${label} (status ${agenda.status})`);
