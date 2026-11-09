@@ -99,6 +99,11 @@ const MIGRACIONES = [
       },
     ],
   },
+  {
+    archivo: "0010_la_nocturna.sql",
+    descripcion: "el próximo evento: La Nocturna, 20 de noviembre de 2026",
+    comprobaciones: [{ tabla: "events", columnas: "slug", fila: ["slug", "la-nocturna"] }],
+  },
 ];
 
 let pendientes = 0;
