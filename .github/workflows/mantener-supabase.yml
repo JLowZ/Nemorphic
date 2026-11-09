@@ -1,0 +1,59 @@
+# Consulta la base dos veces al día para que Supabase (plan gratuito) no pause el
+# proyecto por inactividad, y deja en el resumen cuántos suscriptores hay y cuántos
+# son nuevos. Si la base no responde, el job falla y GitHub avisa por correo.
+#
+# El repo es público: los logs también. Aquí solo salen CONTEOS, nunca correos ni nombres.
+#
+# Secretos del repo (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL          https://<proyecto>.supabase.co
+#   SUPABASE_SECRET_KEY   la misma sb_secret_… que usa la web
+name: Mantener Supabase activo
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # 8:00 AM Colombia
+    - cron: "0 1 * * *" # 8:00 PM Colombia
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+    steps:
+      - name: Contar suscriptores
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "::error::Faltan los secretos SUPABASE_URL y/o SUPABASE_SECRET_KEY"
+            exit 1
+          fi
+
+          # HEAD + count=exact: toca la tabla pero no baja ninguna fila.
+          contar() {
+            curl -sS --fail --retry 3 --retry-delay 10 -I \
+              -H "apikey: $SUPABASE_SECRET_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SECRET_KEY" \
+              -H "Prefer: count=exact" \
+              "$SUPABASE_URL/rest/v1/$1" | tr -d '\r' | sed -n 's|^content-range: .*/||Ip'
+          }
+
+          desde=$(date -u -d '12 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          activos=$(contar "subscribers?select=id&status=eq.active")
+          nuevos=$(contar "subscribers?select=id&created_at=gte.$desde")
+          eventos=$(contar "events?select=id")
+
+          [ -n "$activos" ] && [ -n "$nuevos" ] && [ -n "$eventos" ] || {
+            echo "::error::Supabase respondió sin conteos"; exit 1; }
+
+          {
+            echo "### Supabase activo"
+            echo "- Suscriptores activos: **$activos**"
+            echo "- Nuevos en las últimas 12 h: **$nuevos**"
+            echo "- Eventos: $eventos"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$nuevos" -eq 0 ] || echo "::notice::$nuevos suscriptor(es) nuevo(s) en las últimas 12 h"

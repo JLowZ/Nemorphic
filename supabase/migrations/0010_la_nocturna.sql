@@ -5,10 +5,8 @@
 --
 -- Solo cambia datos, no esquema. Idempotente: se puede pegar dos veces.
 --
--- ANTES DE PEGAR confirmar tres cosas que el flyer no dice:
---   * presale_price: se asume 15000 (la preventa de UMBRA). Cambiarlo si es otro.
---   * reservations_close_at: queda sin hora de cierre. Ver el update del final.
---   * capacity: sin límite de aforo.
+-- Confirmado por el equipo: 15000 con reserva, 20000 en puerta, reservas cerradas el
+-- 20 de noviembre a las 6:00 PM (Colombia). Sin límite de aforo.
 --
 -- ORDEN: pegar justo DESPUÉS de desplegar el código con el flyer
 -- (public/Assets/eventos/la-nocturna/flyer.jpg).
@@ -47,6 +45,6 @@ on conflict (slug) do update
       door_price = excluded.door_price
 returning slug, starts_at, featured, presale_price, door_price;
 
--- Opcional: cierre automático de las reservas (el precio de preventa deja de valer).
--- update public.events set reservations_close_at = '2026-11-20 17:00:00-05'
--- where slug = 'la-nocturna' returning slug, reservations_close_at;
+-- Cierre automático de las reservas: viernes 20 de noviembre, 6:00 PM Colombia.
+update public.events set reservations_close_at = '2026-11-20 18:00:00-05'
+where slug = 'la-nocturna' returning slug, reservations_close_at;
