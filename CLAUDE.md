@@ -140,6 +140,15 @@ Si entra un artista nuevo, o cambia un nombre, se actualizan **las dos**: esta t
 esa lista y `artistas[]` de `src/data/nemorphic.ts`. El orden de arriba es el de
 `artistas[]` y el que se usa para ordenar la media de un evento.
 
+**Invitados especiales**: artistas que no son del sello pero tocaron en un evento. Van en
+`INVITADOS` de `scripts/artistas.mjs`, **no** en esta tabla ni en `artistas[]`. En el pie
+de foto salen como «Abrut (invitado especial)» (la web trata como invitado a cualquier
+nombre que no esté en `artistas[]`) y no cuentan para el «Nemorphic» de los seis.
+
+| Invitado  | Dónde                                                                    |
+| --------- | ------------------------------------------------------------------------ |
+| **Abrut** | La Nocturna (2026-11-20). Amigo y compañero profesional, no es residente |
+
 ## Media de los eventos (Trayectoria)
 
 Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
@@ -159,7 +168,8 @@ Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
   en el resto de eventos abre **otro artista elegido al azar** (un vídeo en el que no
   salga J Løwℤ). Excepción: en Nemorphic Pool Party abre la foto de todos juntos.
 - Orden del resto: la foto de grupo (si no abrió) y luego los artistas en el orden de
-  `artistas[]`. Se fija con el número delante del nombre del archivo.
+  `artistas[]`, con los **invitados al final**. Se fija con el número delante del nombre
+  del archivo.
 - Lo que no entra se guarda en una subcarpeta `_sin-usar/` dentro del evento.
 
 El nombre del archivo es el que fija todo (`3 Video Do y A.L.L.mp4`): ver la cabecera de
@@ -259,12 +269,11 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   **`/admin` → Resumen**: es una decisión de anuncio, no del día del evento. **Crear un evento sigue siendo un `insert` a mano** en el SQL
   Editor: el equipo habla antes de anunciar, así que no hay formulario de alta. El
   flyer y el eslogan pueden faltar; la tarjeta cae a un fondo con el nombre.
-- **Próximo evento: La Nocturna** (`slug la-nocturna`): viernes 20 de noviembre de 2026,
-  8 PM a 3 AM, Av. Santander #55-04, Manizales (La Nocturna Ecosistema Musical). Es el
-  evento destacado, con reservas abiertas y cierre automático ese día a las **6:00 PM**
-  (Colombia). 15K con reserva, 20K en puerta. Flyer en
-  `public/Assets/eventos/la-nocturna/flyer.jpg`; datos en la migración 0010. Se creó por
-  la API con la clave de servicio, no pegando el SQL (el efecto es el mismo).
+- **Próximo evento: ninguno anunciado.** `#eventos` muestra «Estamos cocinando lo
+  próximo…» y `/eventos` «No hay fechas abiertas…», que es lo correcto hasta que se cree
+  el siguiente. **La Nocturna** (`la-nocturna`, 20 de noviembre de 2026, Av. Santander
+  #55-04, Manizales) ya pasó: está en Trayectoria, con `featured` y `reservations_open`
+  en `false`.
 - **Cron anti-pausa de Supabase**: el plan gratuito pausa el proyecto tras 7 días sin
   actividad en la base (solo cuentan consultas a la base, no a Auth ni Storage). El
   workflow `.github/workflows/mantener-supabase.yml` corre a las 8 AM y 8 PM de Colombia,
@@ -295,8 +304,11 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   (`video-do.70c7225c.mp4`): Vercel sirve `/Assets` con `cache-control: immutable` por un
   año, y un archivo que cambia sin cambiar de nombre se queda viejo en los navegadores que
   ya lo bajaron (así siguieron los vídeos mudos). Nunca renombrar a mano esos archivos: los
-  genera `npm run media`. Eventos cargados: UMBRA, Sembrando Conciencia, Nemorphic Pool Party y
-  Opening Nemorphic.
+  genera `npm run media`. Eventos cargados: La Nocturna, UMBRA, Sembrando Conciencia,
+  Nemorphic Pool Party y Opening Nemorphic. **La Nocturna está incompleta**: tiene Blaue
+  Nacht (abre, sorteado), J Løwℤ, DSTRKT, A.L.L y Abrut (invitado); **falta el vídeo de
+  Do**. Cuando llegue: `4 Video Do.mp4` (entre DSTRKT y A.L.L, renumerando A.L.L a 5 y
+  Abrut a 6), `npm run media -- --evento "La Nocturna"`, push y cargar.
 - **Server functions**: en `src/actions/`. `src/start.ts` deja activo el middleware
   CSRF. Cada acción llama por su cuenta a la guarda que le toca, de
   `src/lib/require-admin.ts`: `requireAdmin()` para lo del panel (rechaza incluso
@@ -315,12 +327,10 @@ alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archi
 
 No hay un cambio grande en curso. Pendientes conocidos:
 
-- **El smoke necesita un evento con reservas abiertas**: busca «Reservar mi cupo» en la
-  landing y en `/eventos`, sin depender del nombre del evento. Cuando pase **La Nocturna**
-  (20 de noviembre de 2026) y no haya otro creado, esas comprobaciones fallarán sin que sea
-  un fallo del código: se arregla creando el siguiente evento.
-- **Después de La Nocturna**: moverla a Trayectoria (ver «Añadir un evento pasado nuevo»)
-  y destacar el siguiente evento en `/admin` → Resumen.
+- **Vídeo de Do en La Nocturna**: pendiente de que llegue (ver «Trayectoria»).
+- **Siguiente evento**: cuando se cree, destacarlo en `/admin` → Resumen. El smoke acepta
+  los dos estados de `#eventos` y `/eventos` (con botón de reserva, con reservas cerradas o
+  sin ningún evento abierto), así que no falla entre un evento y el siguiente.
 - **Analítica y dominio propio** siguen sin decidirse (ver memoria del proyecto).
 
 **Archivos que el usuario deja sueltos en la raíz** (un flyer, una foto, un vídeo): se mueven

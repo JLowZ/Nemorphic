@@ -43,6 +43,20 @@ export const ARTISTAS = [
   },
 ];
 
+/**
+ * Invitados especiales: artistas que no son residentes del sello pero tocaron en
+ * algún evento. Salen en el pie de foto con su nombre (la web les añade «invitado
+ * especial»), pero no cuentan para «todos» ni para el pie «Nemorphic», y no van en
+ * `artistas[]` de src/data/nemorphic.ts.
+ */
+export const INVITADOS = [
+  {
+    nombre: "Abrut",
+    // Amigo y compañero profesional del sello; invitado a La Nocturna (2026-11-20).
+    alias: ["abrut"],
+  },
+];
+
 /** Todo el line-up del sello: la foto de «todos juntos». */
 const ALIAS_TODOS = ["todos", "todos los djs", "todos los artistas", "todo el line up", "line up"];
 
@@ -57,8 +71,17 @@ function normalizar(texto) {
 }
 
 const POR_ALIAS = new Map(
-  ARTISTAS.flatMap((artista) => artista.alias.map((alias) => [normalizar(alias), artista.nombre])),
+  [...ARTISTAS, ...INVITADOS].flatMap((artista) =>
+    artista.alias.map((alias) => [normalizar(alias), artista.nombre]),
+  ),
 );
+
+const NOMBRES_INVITADOS = new Set(INVITADOS.map((i) => i.nombre));
+
+/** Si el nombre (artístico) es de un invitado y no de un residente. */
+export function esInvitado(nombre) {
+  return NOMBRES_INVITADOS.has(nombre);
+}
 
 /**
  * «Franco, Alejo y JLowz» → { artistas: ["A.L.L", "DSTRKT", "J Løwℤ"], desconocidos: [] }.
@@ -83,9 +106,15 @@ export function resolverArtistas(texto) {
   return { artistas, desconocidos };
 }
 
-/** «A», «A y B», «A, B y C» — y «todos los artistas de Nemorphic» si salen los seis. */
+/**
+ * «A», «A y B», «A, B y C» — y «todos los artistas de Nemorphic» si salen los seis
+ * residentes. Un invitado lleva «(invitado especial)» detrás: «Abrut (invitado especial)».
+ */
 export function nombresNaturales(artistas) {
-  if (artistas.length === ARTISTAS.length) return "todos los artistas de Nemorphic";
-  if (artistas.length <= 1) return artistas.join("");
-  return `${artistas.slice(0, -1).join(", ")} y ${artistas[artistas.length - 1]}`;
+  const residentes = artistas.filter((n) => !esInvitado(n));
+  const invitados = artistas.filter((n) => esInvitado(n)).map((n) => `${n} (invitado especial)`);
+  const todos = residentes.length === ARTISTAS.length;
+  const partes = [...(todos ? ["todos los artistas de Nemorphic"] : residentes), ...invitados];
+  if (partes.length <= 1) return partes.join("");
+  return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }

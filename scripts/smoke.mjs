@@ -32,11 +32,21 @@ const CHECKS = [
   // --nm-font-secondary de styles.css, o el sitio cae al fallback del sistema.
   ["family=DM+Serif+Display", "DM Serif Display cargada"],
   ["family=Manrope", "Manrope cargada"],
-  ["Reservar mi cupo", "botón de reserva de cupo"],
   // El formulario del boletín vive dentro del modal de contacto, que solo se
   // monta al abrirlo: por SSR solo se puede comprobar el botón que lo abre.
   ['aria-label="Conecta con Nemorphic"', "botón que abre el boletín"],
 ];
+
+/**
+ * #eventos puede estar en tres estados: con botón de reserva, con las reservas ya
+ * cerradas (se paga en puerta) o sin ningún evento abierto. Cualquiera vale.
+ */
+const ESTADOS_EVENTOS = [
+  "Reservar mi cupo",
+  "Las reservas ya cerraron",
+  "Estamos cocinando lo próximo",
+];
+const ESTADOS_AGENDA = ["Reservar mi cupo", "Las reservas ya cerraron", "No hay fechas abiertas"];
 
 function parseArgs() {
   const i = process.argv.indexOf("--url");
@@ -165,13 +175,14 @@ async function main() {
   // que traer los dos eventos en el HTML.
   const agenda = await fetch(`${baseUrl}/eventos`);
   const agendaHtml = await agenda.text();
-  for (const [needle, label] of [
-    ["Todos los eventos", "título de la agenda"],
-    ["Reservar mi cupo", "evento con reservas abiertas en la agenda"],
-  ]) {
-    if (agenda.status !== 200 || !agendaHtml.includes(needle)) {
-      failures.push(`GET /eventos no trae ${label} (status ${agenda.status})`);
-    }
+  if (agenda.status !== 200 || !agendaHtml.includes("Todos los eventos")) {
+    failures.push(`GET /eventos no trae el título de la agenda (status ${agenda.status})`);
+  }
+  // Entre un evento y el siguiente puede no haber ninguno abierto: entonces la agenda
+  // y la landing dicen que se viene algo, en vez de un botón. Las dos ramas valen;
+  // lo que no puede pasar es que no salga ninguna de las dos.
+  if (!ESTADOS_AGENDA.some((t) => agendaHtml.includes(t))) {
+    failures.push("GET /eventos no trae ni botón de reserva ni el aviso de que no hay fechas");
   }
 
   // La trayectoria es pública. Sin eventos con media cargada debe decirlo (y pedir
@@ -229,6 +240,9 @@ async function main() {
   if (/Esta página no pudo cargar|unhandled/i.test(html)) {
     failures.push("La home renderizó la página de error del servidor");
   }
+  if (!ESTADOS_EVENTOS.some((t) => html.includes(t))) {
+    failures.push("La home no trae ni botón de reserva ni el aviso de que no hay eventos");
+  }
   for (const [needle, label] of CHECKS) {
     if (!html.includes(needle)) failures.push(`Falta ${label} — no se encontró ${needle}`);
   }
@@ -242,7 +256,7 @@ async function main() {
   }
 
   console.log(
-    `smoke: OK — ${CHECKS.length + 13} comprobaciones sobre ${baseUrl} ` +
+    `smoke: OK — ${CHECKS.length + 14} comprobaciones sobre ${baseUrl} ` +
       `(home ${html.length} bytes, panel de admin protegido)`,
   );
   process.exit(0);

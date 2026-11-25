@@ -88,11 +88,18 @@ function soloUnVideo(evento: React.SyntheticEvent<HTMLVideoElement>) {
  * Pie de foto: quién sale. Siempre con el nombre artístico (la tabla de alias está en
  * CLAUDE.md y en scripts/artistas.mjs): «A.L.L y Do», «A.L.L, DSTRKT y J Løwℤ». Si
  * salen los seis, el pie es «Nemorphic»: son todos los del sello, y listarlos no dice más.
+ *
+ * Quien no está en `artistas[]` es un invitado especial (p. ej. Abrut en La Nocturna):
+ * sale con su nombre y la aclaración, y no cuenta para el «Nemorphic» de los seis.
  */
 function pieArtistas(salen: ReadonlyArray<string>): string {
-  if (salen.length >= artistas.length) return "Nemorphic";
-  if (salen.length <= 1) return salen.join("");
-  return `${salen.slice(0, -1).join(", ")} y ${salen[salen.length - 1]}`;
+  const residentes = new Set(artistas.map((a) => a.nombre));
+  const delSello = salen.filter((n) => residentes.has(n));
+  const invitados = salen.filter((n) => !residentes.has(n)).map((n) => `${n} (invitado especial)`);
+  const todos = residentes.size > 0 && delSello.length === residentes.size;
+  const partes = [...(todos ? ["Nemorphic"] : delSello), ...invitados];
+  if (partes.length <= 1) return partes.join("");
+  return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }
 
 /**
