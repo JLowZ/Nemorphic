@@ -212,6 +212,19 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
   const claveCorreo = process.env["EMAIL_APP_PASSWORD"];
   delete process.env["EMAIL_APP_PASSWORD"];
 
+  // Las pruebas reservan para UMBRA, que ya pasó y tiene las reservas cerradas. Se
+  // abren solo mientras dura el arnés y se restauran en LIMPIEZA. No se ve en la web:
+  // la agenda solo enseña eventos futuros.
+  const { data: umbraOriginal } = await db
+    .from("events")
+    .select("reservations_open, reservations_close_at")
+    .eq("slug", "umbra")
+    .maybeSingle();
+  await db
+    .from("events")
+    .update({ reservations_open: true, reservations_close_at: null })
+    .eq("slug", "umbra");
+
   grupo("FUNCIONALIDAD: reservas");
   const rRes = await pubRes.createReservation({
     data: {
@@ -689,6 +702,22 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
 
     // La base lo impide por su cuenta: si dependiera solo del panel, dos pestañas
     // abiertas podrian dejar dos destacados y la portada elegiria al azar.
+    // Entre un evento y el siguiente puede no haber ningún destacado. Entonces se
+    // destaca uno de prueba para tener contra qué chocar, y se deshace al final.
+    let destacadoDePrueba: string | null = null;
+    if ((destacados ?? []).length === 0) {
+      const { data: primero } = await db
+        .from("events")
+        .select("slug")
+        .order("starts_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (primero) {
+        await db.from("events").update({ featured: true }).eq("slug", primero.slug);
+        destacadoDePrueba = primero.slug;
+      }
+    }
+
     const { data: otro } = await db
       .from("events")
       .select("slug")
@@ -710,6 +739,9 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
       );
       // Si por lo que sea lo acepto, se deshace: esto corre contra la base real.
       if (!errorDoble) await db.from("events").update({ featured: false }).eq("slug", otro.slug);
+    }
+    if (destacadoDePrueba) {
+      await db.from("events").update({ featured: false }).eq("slug", destacadoDePrueba);
     }
   }
 
@@ -941,6 +973,9 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
 
   grupo("LIMPIEZA");
   if (claveCorreo !== undefined) process.env["EMAIL_APP_PASSWORD"] = claveCorreo;
+  if (umbraOriginal) {
+    await db.from("events").update(umbraOriginal).eq("slug", "umbra");
+  }
   await db.from("reservations").delete().like("holder_email", "%@ejemplo.test");
   await db.from("campaigns").delete().eq("subject", "Prueba automatica");
   await db.from("subscribers").delete().like("email", "%@ejemplo.test");

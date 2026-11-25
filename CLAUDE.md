@@ -166,7 +166,8 @@ Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
 - Una foto de grupo cubre a todos los que salen en ella.
 - **Quién abre el carrusel:** J Løwℤ (el dueño) **no abre siempre**. En UMBRA sí abre él;
   en el resto de eventos abre **otro artista elegido al azar** (un vídeo en el que no
-  salga J Løwℤ). Excepción: en Nemorphic Pool Party abre la foto de todos juntos.
+  salga J Løwℤ). Excepciones: en Nemorphic Pool Party abre la foto de todos juntos, y en
+  **La Nocturna abre Do** (pedido expreso, en cuanto llegue su vídeo).
 - Orden del resto: la foto de grupo (si no abrió) y luego los artistas en el orden de
   `artistas[]`, con los **invitados al final**. Se fija con el número delante del nombre
   del archivo.
@@ -313,10 +314,13 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   año, y un archivo que cambia sin cambiar de nombre se queda viejo en los navegadores que
   ya lo bajaron (así siguieron los vídeos mudos). Nunca renombrar a mano esos archivos: los
   genera `npm run media`. Eventos cargados: La Nocturna, UMBRA, Sembrando Conciencia,
-  Nemorphic Pool Party y Opening Nemorphic. **La Nocturna está incompleta**: tiene Blaue
-  Nacht (abre, sorteado), J Løwℤ, DSTRKT, A.L.L y Abrut (invitado); **falta el vídeo de
-  Do**. Cuando llegue: `4 Video Do.mp4` (entre DSTRKT y A.L.L, renumerando A.L.L a 5 y
-  Abrut a 6), `npm run media -- --evento "La Nocturna"`, push y cargar.
+  Nemorphic Pool Party y Opening Nemorphic. **La Nocturna está incompleta**: hoy abre Blaue
+  Nacht (sorteado) y siguen J Løwℤ, DSTRKT, A.L.L y Abrut (invitado); **falta el vídeo de
+  Do**, y **el usuario pidió que ese abra el carrusel**. Cuando lo deje en la raíz: moverlo
+  a `media-fuente/eventos/La Nocturna/1 Video Do.mp4` y renumerar los demás archivos
+  ahí mismo (`2 Video Blaue Nacht`, `3 Video JLowz`, `4 Video DSTRKT`, `5 Video A.L.L`,
+  `6 Video Abrut`; 6 piezas, el máximo), borrar el original suelto,
+  `npm run media -- --evento "La Nocturna"`, push, esperar el deploy y cargar.
 - **Server functions**: en `src/actions/`. `src/start.ts` deja activo el middleware
   CSRF. Cada acción llama por su cuenta a la guarda que le toca, de
   `src/lib/require-admin.ts`: `requireAdmin()` para lo del panel (rechaza incluso
