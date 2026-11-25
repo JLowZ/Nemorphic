@@ -103,10 +103,16 @@ principio son correctos.
 
 ## Lo que se guarda de cada acción
 
-`reservations` no solo guarda el estado, sino **desde dónde** se cambió:
+Cada **persona** de una reserva (el titular en `reservations` y cada acompañante en
+`reservation_guests`, desde la migración 0011) guarda su estado y **desde dónde** se
+cambió:
 
 - `checked_in_at` / `checked_in_by` — cuándo entró y si lo marcó el panel o la puerta.
 - `paid_at` / `paid_by` — lo mismo para el cobro.
+
+Se marca persona a persona porque un grupo no siempre llega junto. `reservations.status`
+queda como resumen: `checked_in` cuando entró todo el grupo. Lo recalcula
+`sincronizarEstado()` (`src/lib/marcar-personas.ts`) cada vez que cambia un ingreso.
 
 Sirve para cuadrar caja después del evento y para notar si algo se marcó donde no
 debía. La base rechaza cualquier valor que no sea `'admin'` o `'door'`.

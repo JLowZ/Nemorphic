@@ -1,20 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import {
+  acompanantesPorReserva,
+  armarPersonas,
+  resumirPersonas,
+  type FilaAcompanante,
+  type PersonaReserva,
+} from "@/lib/personas-reserva";
 import { requireDoorOrAdmin } from "@/lib/require-admin";
 import { loginSchema } from "@/schemas/admin";
+import { MAX_TICKETS } from "@/schemas/reservation";
 
-/** Lo que ve quien atiende la entrada. Sin ids internos ni datos de más. */
+/**
+ * Lo que ve quien atiende la entrada. Sin ids internos ni datos de más.
+ *
+ * Cada persona del grupo (titular y acompañantes) lleva su propio ingreso y pago:
+ * un grupo de 4 puede llegar 2 y 2, y cada una paga al entrar.
+ */
 export type ReservaPuerta = {
   id: string;
   code: string;
   holderName: string;
   tickets: number;
-  guests: Array<string>;
+  personas: Array<PersonaReserva>;
+  /** 'checked_in' cuando ya entró todo el grupo. */
   status: "confirmed" | "cancelled" | "checked_in";
-  paid: boolean;
-  /** Lo que debe si no ha pagado, en pesos. Null si el evento no tiene precio. */
-  totalAPagar: number | null;
+  /** Lo que falta cobrar de este grupo, en pesos. Null si el evento no tiene precio. */
+  debe: number | null;
 };
 
 export type EventoPuerta = {
@@ -116,7 +129,7 @@ export const listReservationsForDoor = createServerFn({ method: "GET" }).handler
 
     const { data: reservas, error: reservasError } = await supabase
       .from("reservations")
-      .select("id, event_id, code, holder_name, tickets, status, paid")
+      .select("id, event_id, code, holder_name, tickets, status, paid, paid_by, checked_in_at")
       .in("event_id", ids)
       .order("holder_name", { ascending: true });
 
@@ -125,22 +138,21 @@ export const listReservationsForDoor = createServerFn({ method: "GET" }).handler
       throw new Error("No se pudieron cargar las reservas");
     }
 
-    const { data: invitados, error: invitadosError } = await supabase
-      .from("reservation_guests")
-      .select("reservation_id, name, position")
-      .order("position", { ascending: true });
+    const idsReservas = (reservas ?? []).map((r) => r.id);
+    const { data: invitados, error: invitadosError } =
+      idsReservas.length === 0
+        ? { data: [], error: null }
+        : await supabase
+            .from("reservation_guests")
+            .select("reservation_id, name, position, paid, paid_by, checked_in_at")
+            .in("reservation_id", idsReservas);
 
     if (invitadosError) {
       console.error("listReservationsForDoor (acompañantes):", invitadosError);
       throw new Error("No se pudieron cargar los acompañantes");
     }
 
-    const porReserva = new Map<string, Array<string>>();
-    for (const fila of invitados ?? []) {
-      const lista = porReserva.get(fila.reservation_id) ?? [];
-      lista.push(fila.name);
-      porReserva.set(fila.reservation_id, lista);
-    }
+    const porReserva = acompanantesPorReserva((invitados ?? []) as Array<FilaAcompanante>);
 
     return eventos.map((evento) => ({
       slug: evento.slug,
@@ -150,85 +162,69 @@ export const listReservationsForDoor = createServerFn({ method: "GET" }).handler
       doorPrice: evento.door_price,
       reservas: (reservas ?? [])
         .filter((r) => r.event_id === evento.id)
-        .map((r) => ({
-          id: r.id,
-          code: r.code,
-          holderName: r.holder_name,
-          tickets: r.tickets,
-          guests: porReserva.get(r.id) ?? [],
-          status: r.status as ReservaPuerta["status"],
-          paid: r.paid,
-          totalAPagar:
-            typeof evento.presale_price === "number" ? evento.presale_price * r.tickets : null,
-        })),
+        .map((r) => {
+          const personas = armarPersonas(r, porReserva.get(r.id) ?? []);
+          return {
+            id: r.id,
+            code: r.code,
+            holderName: r.holder_name,
+            tickets: r.tickets,
+            personas,
+            status: r.status as ReservaPuerta["status"],
+            debe: resumirPersonas(personas, evento.presale_price).debe,
+          };
+        }),
     }));
   },
 );
 
 /**
- * Marcar ingreso. Lo puede hacer la puerta y el panel; se guarda desde dónde.
+ * Qué personas de una reserva se marcan: 0 es el titular y 1, 2… los acompañantes.
+ * Se manda una lista para poder marcar a todo el grupo de una vez cuando llega junto.
+ */
+const personasSchema = z
+  .array(
+    z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_TICKETS - 1),
+  )
+  .min(1)
+  .max(MAX_TICKETS);
+
+/**
+ * Marcar ingreso, persona a persona. Lo puede hacer la puerta y el panel; se guarda
+ * desde dónde.
  *
  * Deliberadamente NO permite editar nombres ni entradas: si la puerta pudiera,
  * bastaría cambiar un nombre para colar a otra persona.
  */
 export const setCheckIn = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string().uuid(), entered: z.boolean() }))
+  .validator(z.object({ id: z.string().uuid(), personas: personasSchema, entered: z.boolean() }))
   .handler(async ({ data }) => {
     const origen = await requireDoorOrAdmin();
-
-    const { getSupabaseAdmin } = await import("@/lib/supabase");
-
-    const { data: reserva, error: lecturaError } = await getSupabaseAdmin()
-      .from("reservations")
-      .select("status")
-      .eq("id", data.id)
-      .maybeSingle();
-
-    if (lecturaError || !reserva) {
-      return { ok: false as const, message: "Esa reserva no existe." };
-    }
-    if (reserva.status === "cancelled") {
-      return { ok: false as const, message: "Esa reserva está cancelada. No debe entrar." };
-    }
-
-    const { error } = await getSupabaseAdmin()
-      .from("reservations")
-      .update(
-        data.entered
-          ? { status: "checked_in", checked_in_at: new Date().toISOString(), checked_in_by: origen }
-          : { status: "confirmed", checked_in_at: null, checked_in_by: null },
-      )
-      .eq("id", data.id);
-
-    if (error) {
-      console.error("setCheckIn:", error);
-      return { ok: false as const, message: "No se pudo actualizar. Intenta de nuevo." };
-    }
-
-    return { ok: true as const };
+    const { marcarPersonas } = await import("@/lib/marcar-personas");
+    return marcarPersonas({
+      reservaId: data.id,
+      personas: data.personas,
+      campo: "ingreso",
+      valor: data.entered,
+      origen,
+    });
   });
 
-/** Marcar cobrado. También disponible en la puerta, que es donde se cobra. */
+/** Marcar cobrado, persona a persona. También en la puerta, que es donde se cobra. */
 export const setPaid = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string().uuid(), paid: z.boolean() }))
+  .validator(z.object({ id: z.string().uuid(), personas: personasSchema, paid: z.boolean() }))
   .handler(async ({ data }) => {
     const origen = await requireDoorOrAdmin();
-
-    const { getSupabaseAdmin } = await import("@/lib/supabase");
-
-    const { error } = await getSupabaseAdmin()
-      .from("reservations")
-      .update(
-        data.paid
-          ? { paid: true, paid_at: new Date().toISOString(), paid_by: origen }
-          : { paid: false, paid_at: null, paid_by: null },
-      )
-      .eq("id", data.id);
-
-    if (error) {
-      console.error("setPaid:", error);
-      return { ok: false as const, message: "No se pudo actualizar el pago." };
-    }
-
-    return { ok: true as const };
+    const { marcarPersonas } = await import("@/lib/marcar-personas");
+    return marcarPersonas({
+      reservaId: data.id,
+      personas: data.personas,
+      campo: "pago",
+      valor: data.paid,
+      origen,
+    });
   });

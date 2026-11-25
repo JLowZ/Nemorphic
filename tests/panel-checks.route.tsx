@@ -105,7 +105,7 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
     "setReservationStatus rechaza",
     (await fallo(() =>
       res.setReservationStatus({
-        data: { id: "00000000-0000-0000-0000-000000000000", status: "checked_in" },
+        data: { id: "00000000-0000-0000-0000-000000000000", status: "cancelled" },
       }),
     )) === "No autorizado",
   );
@@ -286,14 +286,16 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
     "setCheckIn rechaza sin sesion",
     (await fallo(() =>
       puerta.setCheckIn({
-        data: { id: "00000000-0000-0000-0000-000000000000", entered: true },
+        data: { id: "00000000-0000-0000-0000-000000000000", personas: [0], entered: true },
       }),
     )) === "No autorizado",
   );
   ok(
     "setPaid rechaza sin sesion",
     (await fallo(() =>
-      puerta.setPaid({ data: { id: "00000000-0000-0000-0000-000000000000", paid: true } }),
+      puerta.setPaid({
+        data: { id: "00000000-0000-0000-0000-000000000000", personas: [0], paid: true },
+      }),
     )) === "No autorizado",
   );
   ok(
@@ -448,6 +450,100 @@ const correr = createServerFn({ method: "GET" }).handler(async () => {
         .update({ paid_by: "inventado" })
         .eq("id", nueva.id);
       ok("la base rechaza un origen de pago invalido", Boolean(errOrigen));
+    }
+  }
+
+  grupo("FUNCIONALIDAD: ingreso y pago por persona (grupo que llega por partes)");
+  const migracion0011 = !(await db.from("reservation_guests").select("checked_in_at").limit(1))
+    .error;
+  if (!migracion0011) {
+    saltado("todo el grupo", "falta aplicar 0011_ingreso_por_persona.sql en Supabase");
+  } else {
+    const { marcarPersonas } = await import("@/lib/marcar-personas");
+    const { armarPersonas, resumirPersonas } = await import("@/lib/personas-reserva");
+    const { generarCodigoReserva } = await import("@/schemas/reservation");
+    const { data: ev } = await db.from("events").select("id").eq("slug", "umbra").single();
+
+    // Insertada directamente: lo que se prueba es el marcado, no el formulario.
+    let grupoId: string | null = null;
+    for (let i = 0; i < 10 && ev && !grupoId; i++) {
+      const { data } = await db
+        .from("reservations")
+        .insert({
+          event_id: ev.id,
+          holder_name: "Grupo Prueba",
+          holder_email: "grupo.prueba@ejemplo.test",
+          holder_phone: "3001234567",
+          tickets: 4,
+          code: generarCodigoReserva(),
+        })
+        .select("id")
+        .single();
+      grupoId = data?.id ?? null;
+    }
+    ok("reserva de grupo creada (4 entradas)", grupoId !== null);
+
+    if (grupoId) {
+      const id = grupoId;
+      await db.from("reservation_guests").insert(
+        ["Uno Prueba", "Dos Prueba", "Tres Prueba"].map((name, i) => ({
+          reservation_id: id,
+          name,
+          position: i + 1,
+        })),
+      );
+
+      const leer = async () => {
+        const { data: r } = await db
+          .from("reservations")
+          .select("holder_name, status, paid, paid_by, checked_in_at")
+          .eq("id", id)
+          .single();
+        const { data: g } = await db
+          .from("reservation_guests")
+          .select("reservation_id, name, position, paid, paid_by, checked_in_at")
+          .eq("reservation_id", id);
+        return { status: r?.status, personas: armarPersonas(r, g ?? []) };
+      };
+
+      const marcar = (personas: Array<number>, campo: "ingreso" | "pago", valor: boolean) =>
+        marcarPersonas({ reservaId: id, personas, campo, valor, origen: "door" });
+
+      ok("marcar a los 2 primeros", (await marcar([0, 1], "ingreso", true)).ok);
+      let estado = await leer();
+      ok(
+        "entran 2 de 4: solo esos dos constan dentro",
+        estado.personas.map((p) => p.entro).join() === "true,true,false,false",
+        estado.personas.map((p) => p.entro).join(),
+      );
+      ok("con 2 de 4 la reserva NO consta como entrada", estado.status === "confirmed");
+
+      await marcar([2, 3], "ingreso", true);
+      estado = await leer();
+      ok("al entrar los otros 2, la reserva consta como entrada", estado.status === "checked_in");
+
+      await marcar([3], "ingreso", false);
+      estado = await leer();
+      ok(
+        "deshacer el ingreso de uno la devuelve a pendiente",
+        estado.status === "confirmed" && estado.personas[3]?.entro === false,
+      );
+
+      await marcar([1], "pago", true);
+      estado = await leer();
+      const resumen = resumirPersonas(estado.personas, 15000);
+      ok(
+        "el pago es por persona: paga 1, deben 3",
+        resumen.pagaron === 1 && resumen.debe === 45000 && estado.personas[1]?.pagadoPor === "door",
+        `pagaron ${resumen.pagaron}, debe ${resumen.debe}`,
+      );
+
+      const fuera = await marcar([4], "ingreso", true);
+      ok("rechaza una persona que no está en la reserva", !fuera.ok);
+
+      await db.from("reservations").update({ status: "cancelled" }).eq("id", id);
+      const cancelada = await marcar([3], "ingreso", true);
+      ok("rechaza el ingreso en una reserva cancelada", !cancelada.ok);
     }
   }
 

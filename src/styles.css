@@ -1691,8 +1691,80 @@ select.nm-input option {
   color: #f3a5a5;
 }
 
+/* Personas de una reserva: cada una con su ingreso y su pago (un grupo llega por partes) */
+.nm-personas {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgb(255 255 255 / 8%);
+}
+
+.nm-personas-lista {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.nm-persona {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 2px solid rgb(255 255 255 / 12%);
+  border-radius: 3px;
+  background-color: rgb(255 255 255 / 3%);
+}
+
+.nm-persona.is-dentro {
+  border-left-color: #9fe0b8;
+}
+
+.nm-persona.is-cancelada {
+  opacity: 0.6;
+}
+
+.nm-persona-nombre {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 10rem;
+  color: var(--nm-white);
+  font-size: 0.95rem;
+}
+
+.nm-persona-rol {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 50%);
+}
+
+.nm-persona-estados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.nm-persona-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 @media (max-width: 640px) {
   /* En la puerta se pulsa a ciegas: objetivos grandes y a todo el ancho. */
+  .nm-persona-acciones {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+
+  .nm-puerta-item .nm-persona-acciones button {
+    flex: 1 1 0;
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+  }
+
   .nm-puerta-item .nm-reserva-acciones button {
     flex: 1 1 100%;
     padding: 0.85rem 1rem;

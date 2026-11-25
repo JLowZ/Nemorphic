@@ -49,6 +49,9 @@ erDiagram
         uuid reservation_id FK
         text name
         integer position
+        boolean paid
+        text paid_by
+        text checked_in_by
     }
     subscribers {
         uuid id PK
@@ -118,9 +121,9 @@ Un evento pasado sale en Trayectoria **solo si tiene filas aquí**. No se escrib
 | `holder_name/email/phone`        | `text`            | Datos del titular                                               |
 | `tickets`                        | `integer`         | Entre 1 y 10                                                    |
 | `code`                           | `text` único      | 4 caracteres. Lo que se presenta en la puerta                   |
-| `status`                         | `text`            | `confirmed` · `cancelled` · `checked_in`                        |
-| `paid`, `paid_at`, `paid_by`     |                   | `paid_by` solo admite `'admin'` o `'door'`                      |
-| `checked_in_at`, `checked_in_by` |                   | Igual, para el ingreso                                          |
+| `status`                         | `text`            | `confirmed` · `cancelled` · `checked_in` (entró todo el grupo)  |
+| `paid`, `paid_at`, `paid_by`     |                   | Del **titular**. `paid_by` solo admite `'admin'` o `'door'`     |
+| `checked_in_at`, `checked_in_by` |                   | Igual, para el ingreso del titular                              |
 
 **No hay columna de cédula, y es deliberado.** Es un dato personal sensible y el
 código de 4 caracteres cumple la misma función de identificar la reserva. Si algún
@@ -134,6 +137,12 @@ entradas, hay 2 acompañantes.
 
 `position` es único por reserva, y el borrado va **en cascada**: al borrar una
 reserva desaparecen sus acompañantes.
+
+Desde la 0011 cada acompañante tiene su propio `paid`, `paid_at`, `paid_by`,
+`checked_in_at` y `checked_in_by`, con las mismas reglas que los del titular: un grupo
+de 4 puede llegar 2 y 2 y pagar cada uno al entrar. Al editar una reserva desde el
+panel, los acompañantes se actualizan **por posición** (no se borran y recrean), para
+no perder su ingreso ni su pago al corregir un nombre.
 
 ### `subscribers`
 
@@ -181,7 +190,8 @@ Si aparece algo como PENDIENTE:
 | `0007_cierre_de_reservas.sql`   | `events.reservations_close_at`: cierre automático              |
 | `0008_trayectoria.sql`          | `event_media`: fotos y vídeos de eventos pasados               |
 | `0009_eventos_pasados.sql`      | Flyers por carpeta y los eventos Opening y Pool Party          |
-| `0010_la_nocturna.sql`          | El próximo evento: La Nocturna (20 de noviembre de 2026)       |
+| `0010_la_nocturna.sql`          | El evento La Nocturna (20 de noviembre de 2026)                |
+| `0011_ingreso_por_persona.sql`  | Ingreso y pago por persona en `reservation_guests`             |
 
 ### Reglas al escribir una migración
 

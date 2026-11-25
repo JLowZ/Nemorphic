@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { listReservationsForDoor, setCheckIn, setPaid, type ReservaPuerta } from "@/actions/door";
+import { PersonasReserva, ResumenGrupo } from "@/components/nemorphic/PersonasReserva";
 
 export const Route = createFileRoute("/puerta/_lista/")({
   component: ControlEntrada,
@@ -49,7 +50,8 @@ function ControlEntrada() {
   };
 
   const ingreso = useMutation({
-    mutationFn: (v: { id: string; entered: boolean }) => setCheckIn({ data: v }),
+    mutationFn: (v: { id: string; personas: Array<number>; entered: boolean }) =>
+      setCheckIn({ data: v }),
     onSuccess: async (resultado) => {
       if (!resultado.ok) {
         toast.error(resultado.message);
@@ -61,7 +63,7 @@ function ControlEntrada() {
   });
 
   const pago = useMutation({
-    mutationFn: (v: { id: string; paid: boolean }) => setPaid({ data: v }),
+    mutationFn: (v: { id: string; personas: Array<number>; paid: boolean }) => setPaid({ data: v }),
     onSuccess: async (resultado) => {
       if (!resultado.ok) {
         toast.error(resultado.message);
@@ -111,17 +113,15 @@ function ControlEntrada() {
         (r) =>
           normalizar(r.code).includes(termino) ||
           normalizar(r.holderName).includes(termino) ||
-          r.guests.some((g) => normalizar(g).includes(termino)),
+          r.personas.some((p) => normalizar(p.nombre).includes(termino)),
       )
     : evento.reservas;
 
-  const entradasTotales = evento.reservas
-    .filter((r) => r.status !== "cancelled")
-    .reduce((s, r) => s + r.tickets, 0);
-  const yaEntraron = evento.reservas.filter((r) => r.status === "checked_in").length;
-  const porCobrar = evento.reservas
-    .filter((r) => r.status !== "cancelled" && !r.paid)
-    .reduce((s, r) => s + (r.totalAPagar ?? 0), 0);
+  const vivas = evento.reservas.filter((r) => r.status !== "cancelled");
+  const entradasTotales = vivas.reduce((s, r) => s + r.tickets, 0);
+  // Se cuentan personas, no reservas: un grupo de 4 del que entraron 2 suma 2.
+  const yaEntraron = vivas.reduce((s, r) => s + r.personas.filter((p) => p.entro).length, 0);
+  const porCobrar = vivas.reduce((s, r) => s + (r.debe ?? 0), 0);
 
   return (
     <>
@@ -201,67 +201,30 @@ function ControlEntrada() {
                 </span>
               </div>
 
-              <div className="nm-puerta-estados">
-                <span
-                  className={`nm-etiqueta nm-etiqueta--${reserva.status === "checked_in" ? "checked_in" : reserva.status === "cancelled" ? "cancelled" : "confirmed"}`}
-                >
-                  {reserva.status === "checked_in"
-                    ? "Ya entró"
-                    : reserva.status === "cancelled"
-                      ? "Cancelada"
-                      : "No ha entrado"}
-                </span>
-                <span className={`nm-etiqueta nm-etiqueta--${reserva.paid ? "active" : "debe"}`}>
-                  {reserva.paid
-                    ? "Pagado"
-                    : reserva.totalAPagar !== null
-                      ? `Debe ${pesos.format(reserva.totalAPagar)}`
-                      : "Sin pagar"}
-                </span>
-              </div>
+              <ResumenGrupo
+                personas={reserva.personas}
+                debe={reserva.debe}
+                cancelada={reserva.status === "cancelled"}
+              />
 
-              {reserva.guests.length > 0 && (
-                <div className="nm-reserva-invitados">
-                  Entran con {reserva.holderName}:
-                  <ol>
-                    {reserva.guests.map((nombre, i) => (
-                      <li key={`${reserva.id}-${i}`}>{nombre}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {reserva.status === "cancelled" ? (
+              {reserva.status === "cancelled" && (
                 <p className="nm-puerta-aviso">
                   Reserva cancelada: no debe entrar con este código.
                 </p>
-              ) : (
-                <div className="nm-reserva-acciones">
-                  <button
-                    type="button"
-                    className={
-                      reserva.status === "checked_in" ? "nm-admin-logout" : "nm-btn nm-btn--solid"
-                    }
-                    disabled={ingreso.isPending}
-                    onClick={() =>
-                      ingreso.mutate({
-                        id: reserva.id,
-                        entered: reserva.status !== "checked_in",
-                      })
-                    }
-                  >
-                    {reserva.status === "checked_in" ? "Deshacer ingreso" : "Marcar que entró"}
-                  </button>
-                  <button
-                    type="button"
-                    className={reserva.paid ? "nm-admin-logout" : "nm-btn"}
-                    disabled={pago.isPending}
-                    onClick={() => pago.mutate({ id: reserva.id, paid: !reserva.paid })}
-                  >
-                    {reserva.paid ? "Marcar como no pagado" : "Marcar como pagado"}
-                  </button>
-                </div>
               )}
+
+              <PersonasReserva
+                personas={reserva.personas}
+                precio={evento.presalePrice}
+                cancelada={reserva.status === "cancelled"}
+                ocupado={ingreso.isPending || pago.isPending}
+                onIngreso={(personas, entro) =>
+                  ingreso.mutate({ id: reserva.id, personas, entered: entro })
+                }
+                onPago={(personas, pagado) =>
+                  pago.mutate({ id: reserva.id, personas, paid: pagado })
+                }
+              />
             </article>
           ))}
         </div>

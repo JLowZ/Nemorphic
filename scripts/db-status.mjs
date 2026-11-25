@@ -104,6 +104,16 @@ const MIGRACIONES = [
     descripcion: "el próximo evento: La Nocturna, 20 de noviembre de 2026",
     comprobaciones: [{ tabla: "events", columnas: "slug", fila: ["slug", "la-nocturna"] }],
   },
+  {
+    archivo: "0011_ingreso_por_persona.sql",
+    descripcion: "ingreso y pago de cada persona de un grupo, no de la reserva entera",
+    comprobaciones: [
+      {
+        tabla: "reservation_guests",
+        columnas: "paid, paid_at, paid_by, checked_in_at, checked_in_by",
+      },
+    ],
+  },
 ];
 
 let pendientes = 0;

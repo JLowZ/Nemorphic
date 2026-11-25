@@ -64,14 +64,19 @@ encuentra a _José_.
 
 - El **código** de 4 caracteres, grande.
 - El nombre del titular y cuántas entradas trae.
-- Si ya entró o no.
-- Si pagó, o **cuánto debe** (`Debe $ 30.000`).
-- Los nombres de los acompañantes, si los hay.
+- Cómo va el grupo: _No ha entrado_, _2 de 4 dentro_ o _Entraron todos_.
+- Si pagó todo, o **cuánto falta por cobrar** del grupo (`Debe $ 30.000`).
+- **Una fila por persona** (titular y acompañantes), cada una con sus dos botones.
 
-**Dos botones:**
+**Cada persona se marca por separado**, porque un grupo no siempre llega junto:
+si una reserva de 4 llega 2 y 2, marcas a los 2 que están en la puerta y los otros
+2 quedan pendientes con el mismo código.
 
-- **Marcar que entró** — cuando la persona pasa. Si te equivocas, _Deshacer ingreso_.
-- **Marcar como pagado** — cuando cobras.
+- **Entró** — cuando esa persona pasa. Si te equivocas, _Deshacer ingreso_.
+- **Pagó** — cuando le cobras a esa persona. Si te equivocas, _Deshacer pago_.
+
+Si el grupo llega completo, debajo de las filas hay dos atajos: **Entraron los 4**
+y **Pagaron los 4 ($ 60.000)**, que marcan de una vez a los que falten.
 
 Arriba se ve el total **por cobrar** del evento, que baja según vas marcando.
 

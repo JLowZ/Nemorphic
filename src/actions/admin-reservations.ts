@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import {
+  acompanantesPorReserva,
+  armarPersonas,
+  resumirPersonas,
+  type FilaAcompanante,
+  type PersonaReserva,
+} from "@/lib/personas-reserva";
 import { requireAdmin } from "@/lib/require-admin";
 import {
   adminReservationSchema,
@@ -17,14 +24,12 @@ export type ReservaAdmin = {
   tickets: number;
   status: "confirmed" | "cancelled" | "checked_in";
   createdAt: string;
+  /** Nombres de los acompañantes, para el formulario de edición. */
   guests: Array<string>;
-  paid: boolean;
-  /** Desde dónde se marcó el pago, para poder cuadrar caja. */
-  paidBy: "admin" | "door" | null;
-  /** Desde dónde se marcó el ingreso. */
-  checkedInBy: "admin" | "door" | null;
-  /** Lo que debe esta reserva, en pesos. Null si el evento no tiene precio. */
-  totalAPagar: number | null;
+  /** Titular y acompañantes, cada uno con su ingreso y su pago. */
+  personas: Array<PersonaReserva>;
+  /** Lo que falta cobrar de este grupo, en pesos. Null si el evento no tiene precio. */
+  debe: number | null;
 };
 
 export type EventoAdmin = {
@@ -37,13 +42,15 @@ export type EventoAdmin = {
   doorPrice: number | null;
   /** Si es el que la landing muestra en #eventos. */
   featured: boolean;
-  /** Suma de lo cobrado, en pesos: reservas pagadas y no canceladas. */
+  /** Suma de lo cobrado, en pesos: personas que pagaron, en reservas no canceladas. */
   totalCobrado: number;
   /** Suma de lo que falta cobrar. */
   totalPendiente: number;
   reservas: Array<ReservaAdmin>;
   /** Entradas comprometidas: solo cuentan las que no están canceladas. */
   entradasComprometidas: number;
+  /** Personas que ya entraron, contando una a una dentro de cada grupo. */
+  personasDentro: number;
 };
 
 export const listReservations = createServerFn({ method: "GET" }).handler(
@@ -72,7 +79,7 @@ export const listReservations = createServerFn({ method: "GET" }).handler(
       // Cadena literal en una sola pieza: Supabase infiere los tipos analizando
       // este texto, y una concatenacion en tiempo de ejecucion le hace perder el tipo.
       .select(
-        "id, event_id, code, holder_name, holder_email, holder_phone, tickets, status, created_at, paid, paid_by, checked_in_by",
+        "id, event_id, code, holder_name, holder_email, holder_phone, tickets, status, created_at, paid, paid_by, checked_in_at",
       )
       .order("created_at", { ascending: false });
 
@@ -83,7 +90,7 @@ export const listReservations = createServerFn({ method: "GET" }).handler(
 
     const { data: invitados, error: invitadosError } = await supabase
       .from("reservation_guests")
-      .select("reservation_id, name, position")
+      .select("reservation_id, name, position, paid, paid_by, checked_in_at")
       .order("position", { ascending: true });
 
     if (invitadosError) {
@@ -91,34 +98,30 @@ export const listReservations = createServerFn({ method: "GET" }).handler(
       throw new Error("No se pudieron cargar los acompañantes");
     }
 
-    const porReserva = new Map<string, Array<string>>();
-    for (const fila of invitados ?? []) {
-      const lista = porReserva.get(fila.reservation_id) ?? [];
-      lista.push(fila.name);
-      porReserva.set(fila.reservation_id, lista);
-    }
+    const porReserva = acompanantesPorReserva((invitados ?? []) as Array<FilaAcompanante>);
 
     return (eventos ?? []).map((evento) => {
       const propias = (reservas ?? [])
         .filter((r) => r.event_id === evento.id)
-        .map((r) => ({
-          id: r.id,
-          code: r.code,
-          holderName: r.holder_name,
-          holderEmail: r.holder_email,
-          holderPhone: r.holder_phone,
-          tickets: r.tickets,
-          status: r.status as ReservaAdmin["status"],
-          createdAt: r.created_at,
-          guests: porReserva.get(r.id) ?? [],
-          paid: r.paid,
-          paidBy: r.paid_by as ReservaAdmin["paidBy"],
-          checkedInBy: r.checked_in_by as ReservaAdmin["checkedInBy"],
-          totalAPagar:
-            typeof evento.presale_price === "number" ? evento.presale_price * r.tickets : null,
-        }));
+        .map((r): ReservaAdmin => {
+          const personas = armarPersonas(r, porReserva.get(r.id) ?? []);
+          return {
+            id: r.id,
+            code: r.code,
+            holderName: r.holder_name,
+            holderEmail: r.holder_email,
+            holderPhone: r.holder_phone,
+            tickets: r.tickets,
+            status: r.status as ReservaAdmin["status"],
+            createdAt: r.created_at,
+            guests: personas.slice(1).map((p) => p.nombre),
+            personas,
+            debe: resumirPersonas(personas, evento.presale_price).debe,
+          };
+        });
 
       const vivas = propias.filter((r) => r.status !== "cancelled");
+      const resumenes = vivas.map((r) => resumirPersonas(r.personas, evento.presale_price));
 
       return {
         slug: evento.slug,
@@ -131,20 +134,21 @@ export const listReservations = createServerFn({ method: "GET" }).handler(
         featured: evento.featured ?? false,
         reservas: propias,
         entradasComprometidas: vivas.reduce((suma, r) => suma + r.tickets, 0),
-        totalCobrado: vivas
-          .filter((r) => r.paid)
-          .reduce((suma, r) => suma + (r.totalAPagar ?? 0), 0),
-        totalPendiente: vivas
-          .filter((r) => !r.paid)
-          .reduce((suma, r) => suma + (r.totalAPagar ?? 0), 0),
+        personasDentro: resumenes.reduce((suma, r) => suma + r.dentro, 0),
+        totalCobrado: resumenes.reduce((suma, r) => suma + (r.cobrado ?? 0), 0),
+        totalPendiente: resumenes.reduce((suma, r) => suma + (r.debe ?? 0), 0),
       };
     });
   },
 );
 
+/**
+ * Cancelar o reactivar. «Ya entró» no se pone a mano: sale de marcar a cada persona
+ * (`setCheckIn`), y `status` es solo el resumen de eso.
+ */
 const cambiarEstadoSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["confirmed", "cancelled", "checked_in"]),
+  status: z.enum(["confirmed", "cancelled"]),
 });
 
 export const setReservationStatus = createServerFn({ method: "POST" })
@@ -162,6 +166,12 @@ export const setReservationStatus = createServerFn({ method: "POST" })
     if (error) {
       console.error("setReservationStatus:", error);
       return { ok: false as const, message: "No se pudo actualizar la reserva." };
+    }
+
+    // Al reactivar, si ya había entrado todo el grupo vuelve a constar como dentro.
+    if (data.status === "confirmed") {
+      const { sincronizarEstado } = await import("@/lib/marcar-personas");
+      await sincronizarEstado(data.id);
     }
 
     return { ok: true as const };
@@ -252,8 +262,8 @@ export const createReservationAsAdmin = createServerFn({ method: "POST" })
   });
 
 /**
- * Edición de una reserva existente. Los acompañantes se reemplazan por completo:
- * es más simple y más seguro que intentar casar cuál cambió.
+ * Edición de una reserva existente. Los acompañantes se casan por posición (el 1.º
+ * sigue siendo el 1.º) para no perder su ingreso ni su pago al corregir un nombre.
  */
 export const updateReservation = createServerFn({ method: "POST" })
   .validator(adminReservationUpdateSchema)
@@ -289,23 +299,28 @@ export const updateReservation = createServerFn({ method: "POST" })
       return { ok: false as const, message: "No se pudo guardar la reserva." };
     }
 
-    const { error: borradoError } = await supabase
+    // Los acompañantes se actualizan por posición, sin borrar y volver a crear: así
+    // quien ya entró o pagó lo conserva aunque se le corrija el nombre. Si bajan las
+    // entradas, sobran las últimas posiciones y esas sí se borran.
+    const { error: sobrantesError } = await supabase
       .from("reservation_guests")
       .delete()
-      .eq("reservation_id", data.id);
+      .eq("reservation_id", data.id)
+      .gt("position", data.guests.length);
 
-    if (borradoError) {
-      console.error("updateReservation (borrar acompañantes):", borradoError);
+    if (sobrantesError) {
+      console.error("updateReservation (borrar acompañantes):", sobrantesError);
       return { ok: false as const, message: "No se pudieron actualizar los acompañantes." };
     }
 
     if (data.guests.length > 0) {
-      const { error: guestsError } = await supabase.from("reservation_guests").insert(
+      const { error: guestsError } = await supabase.from("reservation_guests").upsert(
         data.guests.map((invitado, indice) => ({
           reservation_id: data.id,
           name: invitado.name,
           position: indice + 1,
         })),
+        { onConflict: "reservation_id,position" },
       );
 
       if (guestsError) {
@@ -313,6 +328,10 @@ export const updateReservation = createServerFn({ method: "POST" })
         return { ok: false as const, message: "No se pudieron actualizar los acompañantes." };
       }
     }
+
+    // Con más o menos personas, «entró todo el grupo» puede haber cambiado.
+    const { sincronizarEstado } = await import("@/lib/marcar-personas");
+    await sincronizarEstado(data.id);
 
     return { ok: true as const };
   });

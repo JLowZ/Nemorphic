@@ -255,9 +255,17 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   acompañante y marca ingreso y pago; **no puede editar nombres, entradas ni
   acompañantes**, que es justo el fraude que se quiere evitar. Se guarda el origen
   de cada marca (`paid_by`, `checked_in_by`) para poder cuadrar caja.
+  **Ingreso y pago son por persona** (migración 0011): una reserva de grupo sigue
+  teniendo un solo código, pero titular y acompañantes se marcan por separado, porque
+  en La Nocturna llegaron grupos partidos (2 y luego 2). El titular está en
+  `reservations` y cada acompañante en `reservation_guests`; `setCheckIn` y `setPaid`
+  reciben `personas: [0, 2]` (0 = titular). `reservations.status = 'checked_in'` es
+  solo el resumen «entró todo el grupo», que recalcula `sincronizarEstado()`
+  (`src/lib/marcar-personas.ts`). La interfaz es `PersonasReserva` (compartida por la
+  puerta y el panel), con atajos «Entraron los N» / «Pagaron los N» si llegan juntos.
 - **Pagos**: cada evento tiene `presale_price` (lo que paga quien reservó, aunque
   pague en la puerta) y `door_price` (informativo, para quien llega sin reserva).
-  Una reserva debe `entradas x presale_price`. Los precios se editan en
+  Una reserva debe `presale_price x personas que aún no han pagado`. Los precios se editan en
   `/admin/reservas`.
 - **Eventos**: viven en la tabla `events` y **la landing los lee de ahí** (loader
   SSR en `src/routes/index.tsx`). Un evento es **una fila**: ya no hay nada escrito
@@ -318,7 +326,7 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
 
 ### Migraciones
 
-Van de la 0001 a la 0010 y **todas están aplicadas**. Se aplican **a mano** desde el SQL
+Van de la 0001 a la 0011 y **todas están aplicadas**. Se aplican **a mano** desde el SQL
 Editor de Supabase: la clave de servicio habla por PostgREST, que no permite crear ni
 alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archivo de
 `supabase/migrations/` falta por pegar.

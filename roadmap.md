@@ -1,6 +1,6 @@
 # Roadmap
 
-Estado a **9 de noviembre de 2026**.
+Estado a **25 de noviembre de 2026**.
 
 ---
 
@@ -19,6 +19,9 @@ Estado a **9 de noviembre de 2026**.
       para editar
 - [x] **Control de pagos**: precio reservando y en puerta, cuánto debe cada reserva,
       y registro de dónde se cobró
+- [x] **Ingreso y pago por persona** dentro de un grupo (un código, cada persona se
+      marca por separado), tras ver grupos que llegaban partidos en La Nocturna
+- [x] **La Nocturna en Trayectoria**, con Abrut como invitado especial
 - [x] **Eventos en la base de datos**: la landing y `/eventos` los leen de `events`;
       el evento destacado se elige en `/admin` → Resumen
 - [x] **Trayectoria** (`/trayectoria` y `#trayectoria`): eventos pasados con flyer y
@@ -32,11 +35,10 @@ Estado a **9 de noviembre de 2026**.
 
 ## Siguiente
 
-### 1. Pasar La Nocturna a Trayectoria
+### 1. Completar La Nocturna y anunciar el siguiente evento
 
-Después del viernes 20 de noviembre de 2026: cargar su media (ver «Añadir un evento
-pasado nuevo a Trayectoria» en `CLAUDE.md`), crear o destacar el siguiente evento y
-comprobar que `npm run smoke` vuelve a pasar (necesita un evento con reservas abiertas).
+Falta el vídeo de Do de La Nocturna (ver «Trayectoria» en `CLAUDE.md`). Cuando se
+anuncie el siguiente evento, crearlo y destacarlo en `/admin` → Resumen.
 
 ### 2. Analítica de la web
 
