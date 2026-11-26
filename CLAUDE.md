@@ -167,7 +167,7 @@ Cada foto y vídeo lleva un **pie de foto con los artistas que se ven** (columna
 - **Quién abre el carrusel:** J Løwℤ (el dueño) **no abre siempre**. En UMBRA sí abre él;
   en el resto de eventos abre **otro artista elegido al azar** (un vídeo en el que no
   salga J Løwℤ). Excepciones: en Nemorphic Pool Party abre la foto de todos juntos, y en
-  **La Nocturna abre Do** (pedido expreso, en cuanto llegue su vídeo).
+  **La Nocturna abre Do** (pedido expreso).
 - Orden del resto: la foto de grupo (si no abrió) y luego los artistas en el orden de
   `artistas[]`, con los **invitados al final**. Se fija con el número delante del nombre
   del archivo.
@@ -314,13 +314,9 @@ Antes de escribir código, revisa si hay una que cubra la tarea.
   año, y un archivo que cambia sin cambiar de nombre se queda viejo en los navegadores que
   ya lo bajaron (así siguieron los vídeos mudos). Nunca renombrar a mano esos archivos: los
   genera `npm run media`. Eventos cargados: La Nocturna, UMBRA, Sembrando Conciencia,
-  Nemorphic Pool Party y Opening Nemorphic. **La Nocturna está incompleta**: hoy abre Blaue
-  Nacht (sorteado) y siguen J Løwℤ, DSTRKT, A.L.L y Abrut (invitado); **falta el vídeo de
-  Do**, y **el usuario pidió que ese abra el carrusel**. Cuando lo deje en la raíz: moverlo
-  a `media-fuente/eventos/La Nocturna/1 Video Do.mp4` y renumerar los demás archivos
-  ahí mismo (`2 Video Blaue Nacht`, `3 Video JLowz`, `4 Video DSTRKT`, `5 Video A.L.L`,
-  `6 Video Abrut`; 6 piezas, el máximo), borrar el original suelto,
-  `npm run media -- --evento "La Nocturna"`, push, esperar el deploy y cargar.
+  Nemorphic Pool Party y Opening Nemorphic. La Nocturna lleva 6 piezas (el máximo): Do
+  (abre, por pedido), Blaue Nacht, J Løwℤ, DSTRKT, A.L.L y Abrut (invitado). Ectasy no
+  tocó en ella.
 - **Server functions**: en `src/actions/`. `src/start.ts` deja activo el middleware
   CSRF. Cada acción llama por su cuenta a la guarda que le toca, de
   `src/lib/require-admin.ts`: `requireAdmin()` para lo del panel (rechaza incluso
@@ -339,7 +335,6 @@ alterar tablas. Comprueba el estado con `npm run db:status`, que dice qué archi
 
 No hay un cambio grande en curso. Pendientes conocidos:
 
-- **Vídeo de Do en La Nocturna**: pendiente de que llegue (ver «Trayectoria»).
 - **Siguiente evento**: cuando se cree, destacarlo en `/admin` → Resumen. El smoke acepta
   los dos estados de `#eventos` y `/eventos` (con botón de reserva, con reservas cerradas o
   sin ningún evento abierto), así que no falla entre un evento y el siguiente.

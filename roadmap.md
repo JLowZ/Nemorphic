@@ -35,10 +35,9 @@ Estado a **25 de noviembre de 2026**.
 
 ## Siguiente
 
-### 1. Completar La Nocturna y anunciar el siguiente evento
+### 1. Anunciar el siguiente evento
 
-Falta el vídeo de Do de La Nocturna (ver «Trayectoria» en `CLAUDE.md`). Cuando se
-anuncie el siguiente evento, crearlo y destacarlo en `/admin` → Resumen.
+Cuando se anuncie, crearlo y destacarlo en `/admin` → Resumen.
 
 ### 2. Analítica de la web
 
